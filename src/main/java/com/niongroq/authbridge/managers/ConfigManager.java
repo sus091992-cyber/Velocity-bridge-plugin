@@ -22,8 +22,7 @@ public class ConfigManager {
     private ConfigurationNode config;
 
     private String authServer;
-    private String fakePluginName;
-    private String fakePluginColor;
+    private String fakePluginPrefix;
     private String pluginMessage;
     private String pluginFooter;
     private Map<String, String> messages;
@@ -68,11 +67,10 @@ public class ConfigManager {
 
     // ── getters ───────────────────────────────────────────────────────────────
 
-    public String getAuthServer()       { return authServer; }
-    public String getFakePluginName()   { return fakePluginName; }
-    public String getFakePluginColor()  { return fakePluginColor; }
-    public String getPluginMessage()    { return pluginMessage; }
-    public String getPluginFooter()     { return pluginFooter; }
+    public String getAuthServer()         { return authServer; }
+    public String getFakePluginPrefix()   { return fakePluginPrefix; }
+    public String getPluginMessage()      { return pluginMessage; }
+    public String getPluginFooter()       { return pluginFooter; }
     public Map<String, String> getMessages()      { return messages; }
     public Map<String, String> getCustomAliases() { return customAliases; }
     public boolean isPlayerHiderEnabled()         { return playerHiderEnabled; }
@@ -106,9 +104,8 @@ public class ConfigManager {
 
         // fake-plugin section
         ConfigurationNode fakeNode = config.node("fake-plugin");
-        fakePluginName  = fakeNode.node("name").getString("NYXCRAFT");
-        fakePluginColor = fakeNode.node("color").getString("&5");
-        pluginMessage   = fakeNode.node("message").getString("&7Plugins (&a1&7): %plugin%");
+        fakePluginPrefix = fakeNode.node("prefix").getString("&a&lNYX&f&lCORE");
+        pluginMessage    = fakeNode.node("message").getString("&7Plugins (&a1&7): %plugin%");
         pluginFooter    = fakeNode.node("footer").getString("&7There are &a1&7 plugins installed.");
 
         // player-hider
@@ -152,8 +149,7 @@ public class ConfigManager {
 
             "# Fake /plugins response\n" +
             "fake-plugin:\n" +
-            "  name: \"NYXCORE\"\n" +
-            "  color: \"&a\"\n" +
+            "  prefix: \"&a&lNYX&f&lCORE\"\n" +
             "  message: \"&7Plugins (&a1&7): %plugin%\"\n" +
             "  footer: \"\"\n\n" +
 
