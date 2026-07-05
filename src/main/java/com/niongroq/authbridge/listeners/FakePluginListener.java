@@ -75,11 +75,8 @@ public class FakePluginListener {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private void sendFakePluginList(Player player) {
-        String pluginName = configManager.getFakePluginName();
-        String color     = configManager.getFakePluginColor();
-
         String messageLine = configManager.getPluginMessage()
-            .replace("%plugin%", color + pluginName + "&r");
+            .replace("%plugin%", configManager.getFakePluginPrefix() + "&r");
         String footerLine  = configManager.getPluginFooter();
 
         Component msg = MessageUtils.colorize(messageLine);
