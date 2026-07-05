@@ -1,0 +1,42 @@
+auth-server: "auth"
+
+blocked-servers:
+  - "admin"
+  - "maintenance"
+
+auth-required-servers:
+  - "lobby"
+  - "survival"
+  - "creative"
+
+custom-aliases:
+  "/hub": "/server lobby"
+  "/l": "/server lobby"
+  "/spawn": "/server lobby"
+
+player-hider:
+  enabled: true
+  hide-in-world: true
+  hide-in-tablist: true
+  game-mode: "ADVENTURE"
+  messages:
+    hidden: "&7شما مخفی شدید."
+    shown: "&aشما از حالت مخفی خارج شدید."
+
+fake-plugin:
+  name: "NYXCRAFT"
+  color: "&5"
+  message: "&7Plugins (&a1&7): %plugin%"
+  footer: "&7There are &a1&7 plugins installed."
+
+messages:
+  not-logged-in: "&cشما ابتدا باید لاگین کنید!"
+  command-blocked: "&cاین دستور مسدود است!"
+  server-blocked: "&cشما نمی‌تواند از این سرور برافتید!"
+
+settings:
+  enabled: true
+  debug: false
+  login-cache-duration: 3600
+  auto-alias:
+    enabled: true

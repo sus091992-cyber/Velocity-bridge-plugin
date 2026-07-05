@@ -1,0 +1,12 @@
+{
+  "id": "authbridge",
+  "name": "AuthBridge",
+  "version": "3.0.0",
+  "description": "Professional authentication bridge plugin for Velocity",
+  "authors": ["S1MPLE"],
+  "url": "https://github.com/sus091992-cyber/Velocity-bridge-plugin",
+  "main": "com.niongroq.authbridge.AuthBridge",
+  "dependencies": {
+    "authme": "required"
+  }
+}
