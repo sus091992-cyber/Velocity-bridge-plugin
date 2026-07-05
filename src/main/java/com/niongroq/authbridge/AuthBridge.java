@@ -16,7 +16,7 @@ import com.niongroq.authbridge.commands.ServerCommand;
 import com.niongroq.authbridge.commands.AliasCommand;
 import org.slf4j.Logger;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.nio.file.Path;
 
 @Plugin(
