@@ -24,10 +24,10 @@ player-hider:
     shown: "&aشما از حالت مخفی خارج شدید."
 
 fake-plugin:
-  name: "NYXCRAFT"
-  color: "&5"
+  name: "NYXCORE"
+  color: "&a"
   message: "&7Plugins (&a1&7): %plugin%"
-  footer: "&7There are &a1&7 plugins installed."
+  footer: ""
 
 messages:
   not-logged-in: "&cشما ابتدا باید لاگین کنید!"
