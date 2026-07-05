@@ -17,7 +17,6 @@
     <developers>
         <developer>
             <name>S1MPLE</name>
-            <email>s1mple@niongroq.com</email>
         </developer>
     </developers>
 
@@ -25,6 +24,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <velocity.version>3.1.0</velocity.version>
     </properties>
 
     <repositories>
@@ -42,7 +42,7 @@
         <dependency>
             <groupId>com.velocitypowered</groupId>
             <artifactId>velocity-api</artifactId>
-            <version>3.1.0</version>
+            <version>${velocity.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -63,26 +63,36 @@
     <build>
         <finalName>AuthBridge-3.0.0</finalName>
         <plugins>
+            <!--
+                maven-compiler-plugin:
+                annotationProcessorPaths adds velocity-api so the @Plugin
+                annotation is processed and velocity-plugin.json is generated
+                automatically inside the JAR. Without this, Velocity cannot
+                find the plugin descriptor and refuses to inject the constructor.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.0</version>
+                <version>3.11.0</version>
                 <configuration>
                     <source>11</source>
                     <target>11</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.velocitypowered</groupId>
+                            <artifactId>velocity-api</artifactId>
+                            <version>${velocity.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
 
+            <!-- Bundle all runtime deps (configurate-yaml) into a single JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.3.0</version>
                 <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.niongroq.authbridge.AuthBridge</mainClass>
-                        </manifest>
-                    </archive>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
