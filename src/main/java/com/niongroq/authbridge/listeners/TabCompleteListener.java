@@ -7,82 +7,81 @@ import com.velocitypowered.api.proxy.Player;
 import com.niongroq.authbridge.managers.WhitelistManager;
 import org.slf4j.Logger;
 
+import java.util.Set;
+
 /**
- * Hardens tab-completion against plugin-detection attacks.
+ * Tab-completion lockdown — runs at PostOrder.LAST so it is always
+ * the FINAL word on what the client sees, regardless of what any other
+ * listener added or left in the suggestion list.
  *
- * Covered attack vectors:
+ * Attack vectors closed:
  *
  *  1. Unauthenticated players
- *     Their suggestion list is cleared entirely (except for the commands they
- *     are explicitly allowed to type). Hack clients that tab-complete "/" on
- *     join to enumerate available commands get an empty result.
+ *     Suggestion list is replaced with a strict allowlist: only the bare
+ *     command names the player is permitted to type are kept.
+ *     Previously the list was only cleared when the typed prefix was NOT
+ *     on the allowlist — meaning an unauthenticated player typing "/login"
+ *     still received all plugin-namespaced suggestions.
  *
- *  2. Namespaced commands  (namespace:command)
- *     Even for authenticated players, all suggestions containing ":" are
- *     removed. Suggestions like "authbridge:reload", "luckperms:user",
- *     "essentials:eco" directly expose installed plugin names. Every modern
- *     hack client (Meteor, Wurst, Aristois, Sigma, Impact …) uses this as its
- *     primary plugin-detection method.
+ *  2. Namespaced commands (namespace:command)
+ *     Removed for ALL players at LAST priority.
+ *     "authbridge:reload", "luckperms:user", "essentials:home" etc. directly
+ *     expose installed plugin names. Every modern hack client (Meteor, Wurst,
+ *     Aristois, Sigma, Impact…) uses tab-complete enumeration as its primary
+ *     plugin-detection method.
  *
  *  3. Globally-blocked commands
- *     /plugins, /pl, /version, /ver, /about … are removed from suggestions
- *     for everyone so hack clients cannot even discover that these commands
- *     exist on the proxy.
- *
- * Runs at PostOrder.EARLY so it fires before FakePluginListener and any other
- * subscriber that might re-add suggestions.
+ *     /plugins, /pl, /version, /ver, /about … removed from suggestions for
+ *     every player — hack clients must not even discover these command names.
  */
 public class TabCompleteListener {
 
     private final WhitelistManager whitelistManager;
-    private final AuthListener authListener;   // shared source of auth truth
+    private final AuthListener authListener;
     private final Logger logger;
 
     public TabCompleteListener(AuthListener authListener,
                                WhitelistManager whitelistManager,
                                Logger logger) {
-        this.authListener    = authListener;
+        this.authListener     = authListener;
         this.whitelistManager = whitelistManager;
         this.logger           = logger;
     }
 
-    @Subscribe(order = PostOrder.EARLY)
+    /**
+     * LAST: this is the final sanitizer — runs after every other listener so no
+     * subsequent subscriber can re-introduce sensitive suggestions.
+     */
+    @Subscribe(order = PostOrder.LAST)
     public void onTabComplete(TabCompleteEvent event) {
-        Player player  = event.getPlayer();
-        String partial = event.getPartialMessage().toLowerCase().trim();
-        String cmdName = extractCommandName(partial);
-
+        Player player = event.getPlayer();
         boolean authenticated = authListener.isAuthenticated(player.getUniqueId());
 
         if (!authenticated) {
-            // ── Unauthenticated: clear everything unless the partial input is
-            //    already one of the explicitly allowed commands (login / register …)
-            if (!whitelistManager.isAlwaysAllowedCommand(cmdName)
-                    && !whitelistManager.isWhitelistedCommandOnAuth(cmdName)) {
-                event.getSuggestions().clear();
-            }
+            // ── Unauthenticated: keep ONLY explicitly allowed command names ──────
+            // Do this unconditionally — even if the player is typing "/login",
+            // any plugin-namespaced suggestion that crept into the list is removed.
+            Set<String> allowed = whitelistManager.getAllowedCommandNames();
+            event.getSuggestions().removeIf(text -> {
+                // Always strip namespaced suggestions first
+                if (text.contains(":")) return true;
+                String cmd = stripLeadingSlash(text);
+                return !allowed.contains(cmd.toLowerCase());
+            });
             return;
         }
 
-        // ── Authenticated: strip namespaced and globally-blocked suggestions ──
-        // In Velocity 3.x, getSuggestions() returns List<String>
+        // ── Authenticated: remove namespaced and globally-blocked suggestions ──
         event.getSuggestions().removeIf(text -> {
-            // 1. Remove anything with ":" — these are plugin:command namespaces
-            if (text.contains(":")) return true;
-
-            // 2. Remove globally blocked commands (/pl, /ver, /about …)
-            String cleaned = text.startsWith("/") ? text.substring(1) : text;
-            int space = cleaned.indexOf(' ');
-            if (space != -1) cleaned = cleaned.substring(0, space);
-            return whitelistManager.isGloballyBlockedCommand(cleaned);
+            if (text.contains(":")) return true;                   // namespace:cmd leak
+            String cmd = stripLeadingSlash(text);
+            int space = cmd.indexOf(' ');
+            if (space != -1) cmd = cmd.substring(0, space);
+            return whitelistManager.isGloballyBlockedCommand(cmd); // /pl, /ver, etc.
         });
     }
 
-    // ── helpers ───────────────────────────────────────────────────────────────
-
-    private String extractCommandName(String command) {
-        if (command.startsWith("/")) command = command.substring(1);
-        int space = command.indexOf(' ');
-        return space != -1 ? command.substring(0, space) : command;
+    private String stripLeadingSlash(String s) {
+        return s.startsWith("/") ? s.substring(1) : s;
     }
 }

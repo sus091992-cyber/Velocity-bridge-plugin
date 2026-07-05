@@ -133,4 +133,16 @@ public class WhitelistManager {
     public Set<String> getAlwaysAllowedCommands() {
         return alwaysAllowedCommands;
     }
+
+    /**
+     * Returns the union of always-allowed and whitelisted-on-auth command names.
+     * Used by TabCompleteListener to build a strict allowlist for unauthenticated
+     * players — only these bare command names may appear in their suggestion list.
+     */
+    public Set<String> getAllowedCommandNames() {
+        Set<String> allowed = new HashSet<>();
+        allowed.addAll(alwaysAllowedCommands);
+        allowed.addAll(whitelistedCommandsOnAuth);
+        return allowed;
+    }
 }

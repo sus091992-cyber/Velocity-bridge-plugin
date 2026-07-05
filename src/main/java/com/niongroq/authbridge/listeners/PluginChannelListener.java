@@ -15,68 +15,61 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Intercepts plugin-channel messages sent from backend servers to players.
+ * Intercepts plugin-channel messages that travel from backend servers to players.
+ *
+ * Runs at PostOrder.LAST — this listener has the final say on what reaches
+ * the client; no subsequent subscriber can re-introduce filtered data.
  *
  * Attack vectors covered:
  *
- *  1. minecraft:brand
- *     Backend servers (Paper, Purpur, etc.) announce their software name here.
- *     Hack clients (Meteor, Wurst, Impact, Sigma…) read this to detect the
- *     server type and infer which anti-cheat or auth plugin is running.
- *     → We block the real brand and re-send "Minecraft" to the client.
+ *  1. minecraft:brand / MC|Brand (legacy)
+ *     Backend servers (Paper, Purpur, etc.) broadcast their software name here.
+ *     Hack clients read this to infer the server stack and which plugins may
+ *     be installed. We block the real brand and re-send "Minecraft" so the
+ *     server appears to be a vanilla instance.
  *
- *  2. minecraft:register
- *     Backend servers register the plugin-messaging channels they support.
- *     The channel names often include the plugin ID (e.g. "authbridge:auth",
- *     "luckperms:action"). Hack clients read this list on connect.
- *     → We strip every channel whose namespace matches a known plugin/framework
- *       prefix before forwarding the registration packet.
+ *  2. minecraft:register / REGISTER (legacy)
+ *     Backend servers register all their plugin-messaging channels here.
+ *     Channel names are namespaced (e.g. "authbridge:auth", "luckperms:action")
+ *     and directly expose the plugin list.
+ *
+ *     Strategy: strict ALLOWLIST — only explicit vanilla Minecraft channels may
+ *     pass through. Everything else is stripped. This is more robust than a
+ *     blacklist because any unknown plugin channel is blocked by default.
  */
 public class PluginChannelListener {
 
+    // Modern channel names
     private static final String BRAND_CHANNEL    = "minecraft:brand";
     private static final String REGISTER_CHANNEL = "minecraft:register";
 
-    /**
-     * Plugin / framework namespaces whose channel registrations must be hidden.
-     * Add any new plugin you install here to keep it invisible.
-     */
-    private static final Set<String> SENSITIVE_NAMESPACES = Set.of(
-        // Auth / security plugins
-        "authbridge", "authme", "nlogin", "fastlogin",
-        // Proxy infrastructure
-        "velocity", "waterfall", "bungeecord", "bungee", "lilypad",
-        // Common Bukkit/Spigot frameworks & plugins
-        "spigot", "paper", "purpur", "pufferfish",
-        "essentials", "essentialsx",
-        "luckperms", "permissionsex",
-        "worldguard", "worldedit", "fawe",
-        "coreprotect",
-        "citizens", "npc",
-        "mythicmobs", "mm",
-        "protocollib", "protocolsupport",
-        "viaversion", "viabackwards", "viarewind",
-        "geyser", "floodgate",
-        "advancedserverlist",
-        "imageonmap",
-        // Modloaders / mod environments
-        "fabric", "forge", "quilt", "neoforge",
-        "fml", "mcp",
-        // Generic catch-all: remove channels in the Minecraft namespace that
-        // are not standard vanilla channels (standard ones are restored below)
-        "minecraft"
-    );
+    // Legacy channel names used by older backends / mixed-version setups via ViaVersion
+    private static final String BRAND_LEGACY    = "MC|Brand";
+    private static final String REGISTER_LEGACY = "REGISTER";
 
     /**
-     * Standard vanilla Minecraft channels that are safe to forward even when
-     * their namespace is "minecraft:". Everything else in that namespace is
-     * server-side and may reveal plugin info.
+     * STRICT ALLOWLIST: the only minecraft:register entries that may reach clients.
+     * Every other channel — regardless of namespace — is stripped before forwarding.
+     *
+     * Standard vanilla debug channels are kept for compatibility with vanilla debug
+     * tools; they carry no plugin-identification information.
      */
-    private static final Set<String> ALLOWED_MINECRAFT_CHANNELS = Set.of(
-        "minecraft:brand",         // we handle this separately — allow forwarding of our spoofed brand
+    private static final Set<String> SAFE_CHANNELS = Set.of(
         "minecraft:debug/paths",
         "minecraft:debug/neighbors_update",
-        "minecraft:debug/caves_and_cliffs_blending"
+        "minecraft:debug/caves_and_cliffs_blending",
+        "minecraft:debug/structures",
+        "minecraft:debug/worldgen_attempt",
+        "minecraft:debug/poi_ticket_count",
+        "minecraft:debug/poi_added",
+        "minecraft:debug/poi_removed",
+        "minecraft:debug/village_sections",
+        "minecraft:debug/goal_selector",
+        "minecraft:debug/brain",
+        "minecraft:debug/bee",
+        "minecraft:debug/hive",
+        "minecraft:debug/game_test_add_marker",
+        "minecraft:debug/game_test_clear"
     );
 
     private final Logger logger;
@@ -85,18 +78,22 @@ public class PluginChannelListener {
         this.logger = logger;
     }
 
-    @Subscribe(order = PostOrder.EARLY)
+    /**
+     * LAST: runs after all other listeners so no subsequent subscriber can
+     * re-introduce filtered channel data before the packet leaves for the client.
+     */
+    @Subscribe(order = PostOrder.LAST)
     public void onPluginMessage(PluginMessageEvent event) {
-        // Only care about backend-server → player direction
+        // Only intercept backend → player direction
         if (!(event.getSource() instanceof ServerConnection)) return;
         if (!(event.getTarget() instanceof Player))           return;
 
         String channel = event.getIdentifier().getId();
         Player player  = (Player) event.getTarget();
 
-        if (channel.equals(BRAND_CHANNEL)) {
+        if (isBrandChannel(channel)) {
             handleBrand(event, player);
-        } else if (channel.equals(REGISTER_CHANNEL)) {
+        } else if (isRegisterChannel(channel)) {
             handleRegister(event, player);
         }
     }
@@ -104,24 +101,18 @@ public class PluginChannelListener {
     // ── brand spoofing ────────────────────────────────────────────────────────
 
     private void handleBrand(PluginMessageEvent event, Player player) {
-        // Block the real brand packet from reaching the client
         event.setResult(PluginMessageEvent.ForwardResult.handled());
-
-        // Re-send a neutral brand — "Minecraft" looks like a vanilla server
         try {
-            ChannelIdentifier brandId = MinecraftChannelIdentifier.from(BRAND_CHANNEL);
-            player.sendPluginMessage(brandId, encodeBrand("Minecraft"));
+            ChannelIdentifier id = MinecraftChannelIdentifier.from(BRAND_CHANNEL);
+            player.sendPluginMessage(id, encodeBrand("Minecraft"));
         } catch (Exception e) {
-            // If sending fails, the player simply gets no brand — still better
-            // than leaking the real server software name.
-            logger.debug("Brand spoofing send failed (non-critical): " + e.getMessage());
+            logger.debug("Brand spoof failed (non-critical): " + e.getMessage());
         }
     }
 
     /**
-     * Encode a brand string the same way Minecraft's protocol does:
-     *   VarInt(length) followed by UTF-8 bytes.
-     * For brands ≤ 127 bytes the VarInt is always one byte.
+     * Encode brand as Minecraft protocol: VarInt(len) + UTF-8 bytes.
+     * Safe for brands ≤ 127 bytes (single-byte VarInt).
      */
     private byte[] encodeBrand(String brand) {
         byte[] utf8 = brand.getBytes(StandardCharsets.UTF_8);
@@ -131,52 +122,38 @@ public class PluginChannelListener {
         return out;
     }
 
-    // ── channel registration filtering ───────────────────────────────────────
+    // ── channel-registration filtering (strict allowlist) ─────────────────────
 
     private void handleRegister(PluginMessageEvent event, Player player) {
-        // Format: null-terminated channel names concatenated
-        String raw      = new String(event.getData(), StandardCharsets.UTF_8);
-        String[] names  = raw.split("\0");
+        String raw     = new String(event.getData(), StandardCharsets.UTF_8);
+        String[] names = raw.split("\0");
+
+        // Keep ONLY channels in the safe vanilla allowlist
         String filtered = Arrays.stream(names)
-            .filter(ch -> !isSensitive(ch))
+            .filter(ch -> SAFE_CHANNELS.contains(ch.toLowerCase()))
             .collect(Collectors.joining("\0"));
 
-        if (filtered.equals(raw)) {
-            // Nothing was filtered — let the original packet through unchanged
-            return;
-        }
-
-        // Block the original packet
+        // Block the original packet regardless
         event.setResult(PluginMessageEvent.ForwardResult.handled());
 
         if (!filtered.isEmpty()) {
-            // Forward only the safe subset of channels
             try {
-                ChannelIdentifier regId = MinecraftChannelIdentifier.from(REGISTER_CHANNEL);
-                player.sendPluginMessage(regId, filtered.getBytes(StandardCharsets.UTF_8));
+                ChannelIdentifier id = MinecraftChannelIdentifier.from(REGISTER_CHANNEL);
+                player.sendPluginMessage(id, filtered.getBytes(StandardCharsets.UTF_8));
             } catch (Exception e) {
-                logger.debug("Channel register filter send failed (non-critical): " + e.getMessage());
+                logger.debug("Channel register forward failed (non-critical): " + e.getMessage());
             }
         }
-        // If filtered is empty we just suppress the packet entirely
+        // Empty filtered → packet suppressed entirely
     }
 
-    /**
-     * Returns true if the given channel name should be hidden from clients.
-     */
-    private boolean isSensitive(String channel) {
-        if (channel == null || channel.isEmpty()) return true;
+    // ── helpers ───────────────────────────────────────────────────────────────
 
-        String lower = channel.toLowerCase();
+    private boolean isBrandChannel(String ch) {
+        return BRAND_CHANNEL.equals(ch) || BRAND_LEGACY.equals(ch);
+    }
 
-        // Special case: always allow whitelisted vanilla minecraft: channels
-        if (lower.startsWith("minecraft:") && ALLOWED_MINECRAFT_CHANNELS.contains(lower)) {
-            return false;
-        }
-
-        // Check if the channel namespace matches any sensitive prefix
-        int colon = lower.indexOf(':');
-        String namespace = colon != -1 ? lower.substring(0, colon) : lower;
-        return SENSITIVE_NAMESPACES.contains(namespace);
+    private boolean isRegisterChannel(String ch) {
+        return REGISTER_CHANNEL.equals(ch) || REGISTER_LEGACY.equals(ch);
     }
 }
