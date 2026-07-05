@@ -152,10 +152,10 @@ public class ConfigManager {
 
             "# Fake /plugins response\n" +
             "fake-plugin:\n" +
-            "  name: \"NYXCRAFT\"\n" +
-            "  color: \"&5\"\n" +
+            "  name: \"NYXCORE\"\n" +
+            "  color: \"&a\"\n" +
             "  message: \"&7Plugins (&a1&7): %plugin%\"\n" +
-            "  footer: \"&7There are &a1&7 plugins installed.\"\n\n" +
+            "  footer: \"\"\n\n" +
 
             "# Player-facing messages\n" +
             "messages:\n" +
