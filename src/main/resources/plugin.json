@@ -6,7 +6,5 @@
   "authors": ["S1MPLE"],
   "url": "https://github.com/sus091992-cyber/Velocity-bridge-plugin",
   "main": "com.niongroq.authbridge.AuthBridge",
-  "dependencies": {
-    "authme": "required"
-  }
+  "dependencies": {}
 }

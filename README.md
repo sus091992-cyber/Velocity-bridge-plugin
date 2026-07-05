@@ -1,237 +1,189 @@
 # 🛡️ AuthBridge - Professional Authentication Bridge Plugin
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/sus091992-cyber/Velocity-bridge-plugin)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
 [![Java](https://img.shields.io/badge/java-11+-green.svg)](https://www.java.com)
+[![Velocity](https://img.shields.io/badge/velocity-3.0.1+-orange.svg)](https://papermc.io/software/velocity)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/author-S1MPLE-blue.svg)](https://github.com/sus091992-cyber)
 
-AuthBridge is a professional authentication bridge plugin for **Velocity Proxy** that provides secure authentication system with advanced command blocking, player management, and customizable configuration.
+AuthBridge is a professional authentication bridge plugin for **Velocity Proxy** that secures your network by blocking players from accessing game servers until they have logged in on the authentication server.
+
+---
 
 ## ✨ Features
 
 ### 🔐 Authentication System
-- Integration with **AuthMe API** for secure authentication
-- Designate an authentication server for login operations
-- Block access to other servers until authenticated
-- Only allow `/login`, `/register`, `/changepass` commands before authentication
+- Dedicated authentication server — players must log in before joining any other server
+- Players who leave the auth server are automatically granted authenticated status
+- Auth state is tracked per UUID and cleared on disconnect
+- Only `/login`, `/register`, `/changepass` (and configurable commands) are allowed before authentication
 
-### 🚫 Command Blocking System
-- **Globally blocked commands** (always and everywhere):
+### 🚫 Command Blocking
+- **Globally blocked commands** (blocked for everyone, everywhere):
   - `/pl`, `/plugins`, `/plugin`, `/version`, `/ver`, `/about`
-  - Server command variants: `/bukkit:pl`, `/spigot:plugins`, etc.
-  
-- **Server-switching commands** (blocked on auth server only):
-  - `/server`, `/survival`, `/creative`, `/skyblock`, `/hub`, `/lobby`
-  - `/goto`, `/gserv`, `/sv`, `/spawn`, `/factions`, `/prison`, `/kitpvp`, `/pvp`
-  - `/minigames`, `/sky`, `/plot`, `/build`, `/mini`, `/game`, `/join`, `/connect`
+  - Namespaced variants: `/bukkit:pl`, `/spigot:plugins`, etc.
+- **Server-switching commands** (blocked on auth server for unauthenticated players):
+  - `/server`, `/hub`, `/lobby`, `/survival`, `/creative`, and many more
 
-### 👥 Player Hider System
-- Hide players from each other on the auth server
-- Change game mode to `ADVENTURE` automatically
-- Hide players from tab list and world
-- Fully customizable messages
+### 👥 Player Hider
+- Players on the auth server are hidden from each other
+- Fully toggleable via `config.yml`
 
 ### 🎭 Fake Plugin System
-- Display custom plugin name for `/pl` and `/plugins` commands
-- **NEW**: Apply single color code to entire plugin name
-- Customizable plugin message and footer
-- Supports all vanilla color codes (`&0-&f`, `&k`, `&l`, `&m`, `&n`, `&o`, `&r`)
+- Replace the `/plugins` output with a custom plugin name
+- Supports Minecraft color codes (`&0`–`&f`, `&l`, `&o`, `&r`, etc.)
+- Customizable message and footer
 
 ### 📌 Command Aliases
-- Create custom command shortcuts
-- **Auto-alias**: Automatically creates shortcuts for all servers from velocity.toml
-- Example: `/hub` → `/server lobby`
-- Example: `/survival` → `/server survival`
+- Define custom shortcuts: `/hub` → `/server lobby`
+- **Auto-alias**: automatically creates shortcuts for every server defined in `velocity.toml`
 - Fully configurable in `config.yml`
 
 ### ⚙️ Whitelist System
-- Separate configuration for different command types
-- Manage whitelisted commands before authentication
-- Control server-switching and globally-blocked commands
-- Always-allowed commands that bypass all restrictions
+- Fine-grained control over which commands are allowed before authentication
+- Separate lists for: always-allowed, whitelisted-on-auth, server-switching, globally-blocked
+
+---
 
 ## 📋 Requirements
 
-- **Java 11+**
-- **Velocity 3.0.1+**
-- **AuthMe 5.6.0+** (on backend servers)
-- **Maven 3.6+** (for building)
+| Dependency | Version |
+|------------|---------|
+| Java | 11+ |
+| Velocity | 3.0.1+ |
+| Maven | 3.6+ *(build only)* |
+
+---
 
 ## 📦 Installation
 
-### Step 1: Download
-Download the latest release from [GitHub Releases](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
+1. Download `AuthBridge-3.0.0.jar` from [Releases](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
+2. Place it in your Velocity `plugins/` folder
+3. Restart the proxy — config files are generated automatically
+4. Edit `plugins/authbridge/config.yml` and `plugins/authbridge/whitelist.yml`
+5. Restart the proxy again to apply your configuration
 
-### Step 2: Install
-1. Place `AuthBridge-3.0.0.jar` in your `plugins` folder
-2. Restart your Velocity proxy
+---
 
-### Step 3: Configure
-Edit the generated configuration files:
-- `plugins/authbridge/config.yml`
-- `plugins/authbridge/whitelist.yml`
+## 🔨 Building from Source
 
-### Step 4: Restart
-Restart your Velocity proxy to apply the configuration
+**Requirements:** Java 11+, Maven 3.6+
 
-## 🎯 Configuration
+```bash
+git clone https://github.com/sus091992-cyber/Velocity-bridge-plugin.git
+cd Velocity-bridge-plugin
+mvn package
+# Output: target/AuthBridge-3.0.0.jar
+```
+
+---
+
+## ⚙️ Configuration
 
 ### config.yml
 
 ```yaml
+# Name of your authentication server (must match velocity.toml)
 auth-server: "auth"
 
+# Servers that are completely inaccessible (e.g. admin, maintenance)
 blocked-servers:
   - "admin"
   - "maintenance"
 
-auth-required-servers:
-  - "lobby"
-  - "survival"
-  - "creative"
-
+# Custom command shortcuts
 custom-aliases:
   "/hub": "/server lobby"
   "/s": "/server survival"
 
+# Hide players from each other on the auth server
 player-hider:
   enabled: true
-  hide-in-world: true
-  hide-in-tablist: true
-  game-mode: "ADVENTURE"
 
+# Replace /plugins output with a fake plugin name
 fake-plugin:
   name: "NYXCRAFT"
   color: "&5"
   message: "&7Plugins (&a1&7): %plugin%"
   footer: "&7There are &a1&7 plugins installed."
 
+# Messages sent to players
 messages:
   not-logged-in: "&cYou must login first!"
   command-blocked: "&cThis command is blocked!"
-  server-blocked: "&cYou cannot connect to this server!"
+  server-blocked: "&cYou cannot switch servers from here!"
 
 settings:
-  enabled: true
-  debug: false
-  login-cache-duration: 3600
   auto-alias:
-    enabled: true
+    enabled: true   # Auto-create /serverName aliases for all velocity.toml servers
 ```
 
 ### whitelist.yml
 
 ```yaml
+# Commands allowed on the auth server (before login)
 whitelisted-commands-on-auth:
   - "login"
   - "register"
   - "changepass"
   - "help"
 
+# Commands treated as server-switching (blocked on auth server)
 server-switching-commands:
   - "server"
-  - "survival"
   - "hub"
+  - "lobby"
+  - "survival"
+  # ... add more as needed
 
+# Commands blocked globally for all players
 globally-blocked-commands:
   - "pl"
   - "plugins"
   - "version"
+  - "ver"
+  - "about"
 
+# Commands that always pass through (override all blocks)
 always-allowed-commands:
   - "login"
   - "register"
+  - "changepass"
 ```
-
-## 🎨 Color Codes
-
-| Code | Color |
-|------|-------|
-| `&0` | Black |
-| `&1` | Dark Blue |
-| `&2` | Dark Green |
-| `&3` | Dark Aqua |
-| `&4` | Dark Red |
-| `&5` | Dark Purple |
-| `&6` | Gold |
-| `&7` | Gray |
-| `&8` | Dark Gray |
-| `&9` | Blue |
-| `&a` | Green |
-| `&b` | Aqua |
-| `&c` | Red |
-| `&d` | Light Purple |
-| `&e` | Yellow |
-| `&f` | White |
-
-## 🔧 Build
-
-### Build with Maven
-
-```bash
-git clone https://github.com/sus091992-cyber/Velocity-bridge-plugin.git
-cd Velocity-bridge-plugin
-mvn clean package
-```
-
-The compiled JAR will be in `target/authbridge-3.0.0.jar`
-
-## 🏗️ Architecture
-
-### Project Structure
-
-```
-AuthBridge/
-├── src/main/java/com/niongroq/authbridge/
-│   ├── AuthBridge.java
-│   ├── commands/
-│   │   ├── ServerCommand.java
-│   │   └── AliasCommand.java
-│   ├── listeners/
-│   │   ├── AuthListener.java
-│   │   └── TabCompleteListener.java
-│   ├── managers/
-│   │   ├── ConfigManager.java
-│   │   ├── WhitelistManager.java
-│   │   └── PlayerHider.java
-│   └── utils/
-│       └── MessageUtils.java
-└── src/main/resources/
-    ├── plugin.json
-    ├── config.yml
-    └── whitelist.yml
-```
-
-## 📊 Performance
-
-- 🚀 Lightweight and efficient
-- 💾 Minimal memory footprint
-- ⚡ Async command processing
-- 🔄 ConcurrentHashMap for thread-safe operations
-- 📈 Scalable for large server networks
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👨‍💻 Author
-
-**S1MPLE**
-- GitHub: [@sus091992-cyber](https://github.com/sus091992-cyber)
-
-## 📞 Support
-
-For issues, questions, or suggestions:
-- 🐛 GitHub Issues: [Create an Issue](https://github.com/sus091992-cyber/Velocity-bridge-plugin/issues)
-- 💬 Discussions: [Start a Discussion](https://github.com/sus091992-cyber/Velocity-bridge-plugin/discussions)
 
 ---
 
-**Made with ❤️ by S1MPLE**
+## 🔄 How Authentication Works
 
-Last Updated: 2026-07-05
-Version: 3.0.0
+```
+Player connects to proxy
+        │
+        ▼
+ Sent to auth server
+        │
+   /login or /register
+        │
+        ▼
+ AuthMe authenticates player
+        │
+        ▼
+ Player redirected to lobby/hub
+        │  ← AuthBridge detects this transition
+        ▼
+ Player marked as authenticated
+        │
+        ▼
+ Full access to all servers
+```
+
+> **Note:** AuthBridge detects authentication by tracking when a player transitions from the auth server to another server. No direct AuthMe API dependency is required on the proxy side.
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+## 👤 Author
+
+**S1MPLE** — [GitHub](https://github.com/sus091992-cyber)

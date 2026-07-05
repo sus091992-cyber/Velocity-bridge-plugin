@@ -17,12 +17,12 @@ target/
 .DS_Store
 Thumbs.db
 
-# Build
-*.jar
+# Build output
 *.class
 
 # Logs
 *.log
 
-# Dependencies
+# Dependencies (manual download)
+libs/
 dependency-reduced-pom.xml
