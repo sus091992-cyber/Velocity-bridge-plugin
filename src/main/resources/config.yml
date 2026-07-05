@@ -24,8 +24,7 @@ player-hider:
     shown: "&aشما از حالت مخفی خارج شدید."
 
 fake-plugin:
-  name: "NYXCORE"
-  color: "&a"
+  prefix: "&a&lNYX&f&lCORE"
   message: "&7Plugins (&a1&7): %plugin%"
   footer: ""
 
