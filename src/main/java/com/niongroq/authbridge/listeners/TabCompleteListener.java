@@ -1,12 +1,10 @@
 package com.niongroq.authbridge.listeners;
 
 import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.command.TabCompleteEvent;
+import com.velocitypowered.api.event.player.TabCompleteEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.niongroq.authbridge.managers.WhitelistManager;
 import org.slf4j.Logger;
-
-import java.util.Collections;
 
 public class TabCompleteListener {
 
@@ -20,16 +18,12 @@ public class TabCompleteListener {
 
     @Subscribe
     public void onTabComplete(TabCompleteEvent event) {
-        if (!(event.getSource() instanceof Player)) {
-            return;
-        }
-
-        Player player = (Player) event.getSource();
-        String partialCommand = event.getPartialCommand().toLowerCase();
+        Player player = event.getPlayer();
+        String partialCommand = event.getPartialMessage().toLowerCase();
         String commandName = extractCommandName(partialCommand);
 
         if (whitelistManager.isGloballyBlockedCommand(commandName)) {
-            event.setSuggestions(Collections.emptyList());
+            event.getSuggestions().clear();
         }
     }
 
