@@ -6,6 +6,8 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.niongroq.authbridge.listeners.AuthListener;
+import com.niongroq.authbridge.listeners.FakePluginListener;
+import com.niongroq.authbridge.listeners.PluginChannelListener;
 import com.niongroq.authbridge.listeners.TabCompleteListener;
 import com.niongroq.authbridge.managers.ConfigManager;
 import com.niongroq.authbridge.managers.WhitelistManager;
@@ -49,13 +51,12 @@ public class AuthBridge {
             logger.info("║              By: S1MPLE                    ║");
             logger.info("╚════════════════════════════════════════════╝");
 
-            this.configManager = new ConfigManager(dataDirectory, logger);
+            this.configManager   = new ConfigManager(dataDirectory, logger);
             this.whitelistManager = new WhitelistManager(dataDirectory, logger);
-            this.playerHider = new PlayerHider(server, configManager, logger);
+            this.playerHider     = new PlayerHider(server, configManager, logger);
 
             configManager.loadConfig();
             whitelistManager.loadWhitelist();
-
             logger.info("✓ Configurations loaded successfully");
 
             registerListeners();
@@ -74,83 +75,82 @@ public class AuthBridge {
     }
 
     private void registerListeners() {
-        server.getEventManager().register(
-            this,
-            new AuthListener(server, configManager, whitelistManager, playerHider, logger)
-        );
+        // Core auth listener — must be registered first so TabCompleteListener
+        // can hold a reference to its isAuthenticated() method
+        AuthListener authListener = new AuthListener(
+            server, configManager, whitelistManager, playerHider, logger);
 
-        server.getEventManager().register(
-            this,
-            new TabCompleteListener(whitelistManager, logger)
-        );
+        // Security: intercept /plugins, /pl, /ver … and respond with fake list.
+        // Runs at PostOrder.EARLY — before AuthListener's generic command blocker.
+        FakePluginListener fakePluginListener = new FakePluginListener(configManager, logger);
+
+        // Security: intercept plugin-channel messages from backend servers:
+        //   - minecraft:brand   → spoofed to "Minecraft"
+        //   - minecraft:register → plugin namespaces stripped
+        PluginChannelListener channelListener = new PluginChannelListener(logger);
+
+        // Security: tab-complete lockdown.
+        //   - Unauthenticated players: only allowed commands visible
+        //   - All players: namespaced (plugin:cmd) suggestions removed
+        TabCompleteListener tabListener = new TabCompleteListener(
+            authListener, whitelistManager, logger);
+
+        server.getEventManager().register(this, authListener);
+        server.getEventManager().register(this, fakePluginListener);
+        server.getEventManager().register(this, channelListener);
+        server.getEventManager().register(this, tabListener);
+
+        logger.info("✓ Listeners registered (auth, fake-plugin, channel-guard, tab-complete)");
     }
 
     private void registerCommands() {
         server.getCommandManager().register(
             "server",
-            new ServerCommand(server, configManager, whitelistManager, logger)
-        );
+            new ServerCommand(server, configManager, whitelistManager, logger));
 
-        AliasCommand aliasCommand = new AliasCommand(server, configManager, logger);
-        configManager.getCustomAliases().forEach((alias, command) -> {
-            String aliasName = alias.substring(1).toLowerCase();
-            server.getCommandManager().register(aliasName, aliasCommand);
-            logger.info("✓ Custom alias registered: /" + aliasName + " → " + command);
+        AliasCommand aliasCmd = new AliasCommand(server, configManager, logger);
+        configManager.getCustomAliases().forEach((alias, target) -> {
+            String name = alias.startsWith("/") ? alias.substring(1).toLowerCase() : alias.toLowerCase();
+            server.getCommandManager().register(name, aliasCmd);
+            logger.info("✓ Custom alias: /" + name + " → " + target);
         });
     }
 
     private void registerAutoAliases() {
         if (!configManager.isAutoAliasEnabled()) {
-            logger.info("⚠ Auto-alias system is disabled");
+            logger.info("⚠ Auto-alias disabled");
             return;
         }
 
-        logger.info("📋 Reading servers from velocity.toml...");
+        logger.info("📋 Registering auto-aliases from velocity.toml...");
+        String authServer = configManager.getAuthServer();
 
-        server.getAllServers().forEach(registeredServer -> {
-            String serverName = registeredServer.getServerInfo().getName();
+        server.getAllServers().forEach(reg -> {
+            String name = reg.getServerInfo().getName();
 
-            String authServer = configManager.getAuthServer();
-            if (serverName.equalsIgnoreCase(authServer)) {
-                logger.info("⊘ Skipping auth server: " + serverName);
+            if (name.equalsIgnoreCase(authServer)) {
+                logger.info("⊘ Skipping auth server: " + name);
+                return;
+            }
+            if (configManager.getBlockedServers().contains(name.toLowerCase())) {
+                logger.info("⊘ Skipping blocked server: " + name);
                 return;
             }
 
-            AliasCommand autoAliasCommand = new AliasCommand(server, configManager, logger);
-
-            server.getCommandManager().register(
-                serverName.toLowerCase(),
-                autoAliasCommand
-            );
-
-            logger.info("✓ Auto-alias registered: /" + serverName.toLowerCase() + 
-                       " → /server " + serverName);
+            AliasCommand autoAlias = new AliasCommand(server, configManager, logger);
+            server.getCommandManager().register(name.toLowerCase(), autoAlias);
+            logger.info("✓ Auto-alias: /" + name.toLowerCase() + " → /server " + name);
         });
 
-        logger.info("✓ Auto-alias registration completed!");
+        logger.info("✓ Auto-alias registration completed");
     }
 
-    public ProxyServer getServer() {
-        return server;
-    }
+    // ── accessors ─────────────────────────────────────────────────────────────
 
-    public Logger getLogger() {
-        return logger;
-    }
-
-    public Path getDataDirectory() {
-        return dataDirectory;
-    }
-
-    public ConfigManager getConfigManager() {
-        return configManager;
-    }
-
-    public WhitelistManager getWhitelistManager() {
-        return whitelistManager;
-    }
-
-    public PlayerHider getPlayerHider() {
-        return playerHider;
-    }
+    public ProxyServer getServer()               { return server; }
+    public Logger getLogger()                    { return logger; }
+    public Path getDataDirectory()               { return dataDirectory; }
+    public ConfigManager getConfigManager()      { return configManager; }
+    public WhitelistManager getWhitelistManager() { return whitelistManager; }
+    public PlayerHider getPlayerHider()          { return playerHider; }
 }

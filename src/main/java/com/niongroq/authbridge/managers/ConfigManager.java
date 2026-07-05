@@ -9,7 +9,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ConfigManager {
 
@@ -25,24 +28,26 @@ public class ConfigManager {
     private String pluginFooter;
     private Map<String, String> messages;
     private Map<String, String> customAliases;
+    private Set<String> blockedServers;        // fix: was never loaded before
     private boolean playerHiderEnabled;
-    private int loginCacheDuration;
     private boolean autoAliasEnabled;
 
     public ConfigManager(Path dataDirectory, Logger logger) {
         this.dataDirectory = dataDirectory;
-        this.logger = logger;
-        this.configFile = dataDirectory.resolve("config.yml").toFile();
-        this.messages = new HashMap<>();
+        this.logger        = logger;
+        this.configFile    = dataDirectory.resolve("config.yml").toFile();
+        this.messages      = new HashMap<>();
         this.customAliases = new HashMap<>();
+        this.blockedServers = new HashSet<>();
     }
+
+    // ── public API ────────────────────────────────────────────────────────────
 
     public void loadConfig() {
         try {
             if (!Files.exists(dataDirectory)) {
                 Files.createDirectories(dataDirectory);
             }
-
             if (!configFile.exists()) {
                 logger.info("Creating default config.yml...");
                 createDefaultConfig();
@@ -61,116 +66,108 @@ public class ConfigManager {
         }
     }
 
-    private void parseConfiguration() {
-        authServer = config.node("auth-server").getString("auth");
+    // ── getters ───────────────────────────────────────────────────────────────
 
-        ConfigurationNode fakePluginNode = config.node("fake-plugin");
-        fakePluginName = fakePluginNode.node("name").getString("NYXCRAFT");
-        fakePluginColor = fakePluginNode.node("color").getString("&5");
-        pluginMessage = fakePluginNode.node("message").getString("&7Plugins (&a1&7): %plugin%");
-        pluginFooter = fakePluginNode.node("footer").getString("&7There are &a1&7 plugins installed.");
+    public String getAuthServer()       { return authServer; }
+    public String getFakePluginName()   { return fakePluginName; }
+    public String getFakePluginColor()  { return fakePluginColor; }
+    public String getPluginMessage()    { return pluginMessage; }
+    public String getPluginFooter()     { return pluginFooter; }
+    public Map<String, String> getMessages()      { return messages; }
+    public Map<String, String> getCustomAliases() { return customAliases; }
+    public boolean isPlayerHiderEnabled()         { return playerHiderEnabled; }
+    public boolean isAutoAliasEnabled()           { return autoAliasEnabled; }
 
-        ConfigurationNode playerHiderNode = config.node("player-hider");
-        playerHiderEnabled = playerHiderNode.node("enabled").getBoolean(true);
-
-        ConfigurationNode messagesNode = config.node("messages");
-        messagesNode.childrenMap().forEach((key, node) -> {
-            messages.put(key.toString(), node.getString(""));
-        });
-
-        ConfigurationNode aliasesNode = config.node("custom-aliases");
-        aliasesNode.childrenMap().forEach((key, node) -> {
-            String aliasKey = key.toString();
-            if (!aliasKey.startsWith("/")) {
-                aliasKey = "/" + aliasKey;
-            }
-            customAliases.put(aliasKey.toLowerCase(), node.getString(""));
-        });
-
-        loginCacheDuration = config.node("settings", "login-cache-duration").getInt(3600);
-        autoAliasEnabled = config.node("settings", "auto-alias", "enabled").getBoolean(true);
-    }
-
-    private void createDefaultConfig() {
-        try {
-            String defaultConfig = "auth-server: \"auth\"\n\n" +
-                "blocked-servers:\n" +
-                "  - \"admin\"\n" +
-                "  - \"maintenance\"\n\n" +
-                "auth-required-servers:\n" +
-                "  - \"lobby\"\n" +
-                "  - \"survival\"\n\n" +
-                "custom-aliases:\n" +
-                "  \"/hub\": \"/server lobby\"\n" +
-                "  \"/l\": \"/server lobby\"\n\n" +
-                "player-hider:\n" +
-                "  enabled: true\n" +
-                "  hide-in-world: true\n" +
-                "  hide-in-tablist: true\n" +
-                "  game-mode: \"ADVENTURE\"\n\n" +
-                "fake-plugin:\n" +
-                "  name: \"NYXCRAFT\"\n" +
-                "  color: \"&5\"\n" +
-                "  message: \"&7Plugins (&a1&7): %plugin%\"\n" +
-                "  footer: \"&7There are &a1&7 plugins installed.\"\n\n" +
-                "messages:\n" +
-                "  not-logged-in: \"&cYou must login first!\"\n" +
-                "  command-blocked: \"&cThis command is blocked!\"\n\n" +
-                "settings:\n" +
-                "  enabled: true\n" +
-                "  debug: false\n" +
-                "  login-cache-duration: 3600\n" +
-                "  auto-alias:\n" +
-                "    enabled: true\n";
-
-            Files.write(configFile.toPath(), defaultConfig.getBytes());
-            logger.info("Default config.yml created successfully");
-        } catch (IOException e) {
-            logger.error("Failed to create default config", e);
-        }
-    }
-
-    public String getAuthServer() {
-        return authServer;
-    }
-
-    public String getFakePluginName() {
-        return fakePluginName;
-    }
-
-    public String getFakePluginColor() {
-        return fakePluginColor;
-    }
-
-    public String getPluginMessage() {
-        return pluginMessage;
-    }
-
-    public String getPluginFooter() {
-        return pluginFooter;
-    }
-
-    public Map<String, String> getMessages() {
-        return messages;
-    }
+    /**
+     * Lower-cased set of server names that players should never be able to reach.
+     * Was previously parsed but never stored — fix for ServerCommand blocked-server check.
+     */
+    public Set<String> getBlockedServers() { return blockedServers; }
 
     public String getMessage(String key) {
         return messages.getOrDefault(key, "&cMessage not found: " + key);
     }
 
-    public Map<String, String> getCustomAliases() {
-        return customAliases;
+    // ── private ───────────────────────────────────────────────────────────────
+
+    private void parseConfiguration() {
+        authServer = config.node("auth-server").getString("auth");
+
+        // blocked-servers list (fix: was missing from previous implementation)
+        blockedServers.clear();
+        try {
+            List<String> rawBlocked = config.node("blocked-servers").getList(String.class);
+            if (rawBlocked != null) {
+                rawBlocked.forEach(s -> blockedServers.add(s.toLowerCase()));
+            }
+        } catch (Exception e) {
+            logger.warn("Could not parse blocked-servers list: " + e.getMessage());
+        }
+
+        // fake-plugin section
+        ConfigurationNode fakeNode = config.node("fake-plugin");
+        fakePluginName  = fakeNode.node("name").getString("NYXCRAFT");
+        fakePluginColor = fakeNode.node("color").getString("&5");
+        pluginMessage   = fakeNode.node("message").getString("&7Plugins (&a1&7): %plugin%");
+        pluginFooter    = fakeNode.node("footer").getString("&7There are &a1&7 plugins installed.");
+
+        // player-hider
+        playerHiderEnabled = config.node("player-hider", "enabled").getBoolean(true);
+
+        // messages
+        messages.clear();
+        config.node("messages").childrenMap().forEach((key, node) ->
+            messages.put(key.toString(), node.getString("")));
+
+        // custom aliases
+        customAliases.clear();
+        config.node("custom-aliases").childrenMap().forEach((key, node) -> {
+            String k = key.toString();
+            if (!k.startsWith("/")) k = "/" + k;
+            customAliases.put(k.toLowerCase(), node.getString(""));
+        });
+
+        // settings
+        autoAliasEnabled = config.node("settings", "auto-alias", "enabled").getBoolean(true);
     }
 
-    public boolean isPlayerHiderEnabled() {
-        return playerHiderEnabled;
-    }
+    private void createDefaultConfig() throws IOException {
+        String cfg =
+            "# Name of your authentication server (must match velocity.toml)\n" +
+            "auth-server: \"auth\"\n\n" +
 
-    public int getLoginCacheDuration() {
-        return loginCacheDuration;
-    }
+            "# Servers completely inaccessible to players\n" +
+            "blocked-servers:\n" +
+            "  - \"admin\"\n" +
+            "  - \"maintenance\"\n\n" +
 
-    public boolean isAutoAliasEnabled() {
-        return autoAliasEnabled;
+            "# Custom command shortcuts  (alias → target command)\n" +
+            "custom-aliases:\n" +
+            "  \"/hub\": \"/server lobby\"\n" +
+            "  \"/l\": \"/server lobby\"\n\n" +
+
+            "# Hide players from each other while on the auth server\n" +
+            "player-hider:\n" +
+            "  enabled: true\n\n" +
+
+            "# Fake /plugins response\n" +
+            "fake-plugin:\n" +
+            "  name: \"NYXCRAFT\"\n" +
+            "  color: \"&5\"\n" +
+            "  message: \"&7Plugins (&a1&7): %plugin%\"\n" +
+            "  footer: \"&7There are &a1&7 plugins installed.\"\n\n" +
+
+            "# Player-facing messages\n" +
+            "messages:\n" +
+            "  not-logged-in: \"&cYou must login first!\"\n" +
+            "  command-blocked: \"&cThis command is blocked!\"\n" +
+            "  server-blocked: \"&cYou cannot connect to that server!\"\n\n" +
+
+            "settings:\n" +
+            "  auto-alias:\n" +
+            "    enabled: true\n";
+
+        Files.writeString(configFile.toPath(), cfg);
+        logger.info("Default config.yml created");
     }
 }

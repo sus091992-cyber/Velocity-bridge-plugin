@@ -21,8 +21,8 @@ public class ServerCommand implements SimpleCommand {
     private final WhitelistManager whitelistManager;
     private final Logger logger;
 
-    public ServerCommand(ProxyServer server, ConfigManager configManager, 
-                        WhitelistManager whitelistManager, Logger logger) {
+    public ServerCommand(ProxyServer server, ConfigManager configManager,
+                         WhitelistManager whitelistManager, Logger logger) {
         this.server = server;
         this.configManager = configManager;
         this.whitelistManager = whitelistManager;
@@ -47,19 +47,21 @@ public class ServerCommand implements SimpleCommand {
         }
 
         String serverName = args[0].toLowerCase();
-        Optional<RegisteredServer> targetServer = server.getServer(serverName);
 
-        if (!targetServer.isPresent()) {
+        // ── fix: was incorrectly checking globallyBlockedCommands instead of blockedServers ──
+        if (configManager.getBlockedServers().contains(serverName)) {
+            player.sendMessage(MessageUtils.colorize(
+                configManager.getMessage("server-blocked")));
+            return;
+        }
+
+        Optional<RegisteredServer> target = server.getServer(serverName);
+        if (!target.isPresent()) {
             player.sendMessage(MessageUtils.colorize("&cServer not found!"));
             return;
         }
 
-        if (whitelistManager.getGloballyBlockedCommands().contains(serverName)) {
-            player.sendMessage(MessageUtils.colorize("&cYou cannot connect to this server!"));
-            return;
-        }
-
-        player.createConnectionRequest(targetServer.get()).fireAndForget();
+        player.createConnectionRequest(target.get()).fireAndForget();
         player.sendMessage(MessageUtils.colorize("&aConnecting to &b" + serverName + "&a..."));
     }
 
@@ -71,9 +73,11 @@ public class ServerCommand implements SimpleCommand {
 
         if (args.length == 1 && source instanceof Player) {
             String partial = args[0].toLowerCase();
-            server.getAllServers().forEach(registeredServer -> {
-                String name = registeredServer.getServerInfo().getName();
-                if (name.toLowerCase().startsWith(partial)) {
+            server.getAllServers().forEach(reg -> {
+                String name = reg.getServerInfo().getName();
+                // Never suggest blocked servers
+                if (!configManager.getBlockedServers().contains(name.toLowerCase())
+                        && name.toLowerCase().startsWith(partial)) {
                     suggestions.add(name);
                 }
             });

@@ -1,10 +1,12 @@
 package com.niongroq.authbridge.listeners;
 
+import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.command.CommandExecuteEvent;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
+import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
@@ -28,20 +30,21 @@ public class AuthListener {
     private final Logger logger;
 
     /**
-     * UUIDs of players that have been confirmed as authenticated.
-     * Authentication is confirmed by plugin messaging from the backend AuthMe server.
-     * Players are removed on disconnect or when they reconnect.
+     * Players whose authentication state has been confirmed.
+     * Cleared on every disconnect so a reconnecting player always starts fresh.
      */
     private final Set<UUID> authenticatedPlayers = ConcurrentHashMap.newKeySet();
 
     /**
-     * UUIDs of players currently on the auth server (and therefore unauthenticated).
-     * Used to detect a legitimate auth-server → other-server transition.
+     * Players currently sitting on the auth server (unauthenticated).
+     * A transition from this set → another server is the signal that AuthMe
+     * has redirected them after a successful login/register.
      */
     private final Set<UUID> playersOnAuthServer = ConcurrentHashMap.newKeySet();
 
     public AuthListener(ProxyServer server, ConfigManager configManager,
-                        WhitelistManager whitelistManager, PlayerHider playerHider, Logger logger) {
+                        WhitelistManager whitelistManager, PlayerHider playerHider,
+                        Logger logger) {
         this.server = server;
         this.configManager = configManager;
         this.whitelistManager = whitelistManager;
@@ -49,20 +52,27 @@ public class AuthListener {
         this.logger = logger;
     }
 
+    // ── public API used by TabCompleteListener ────────────────────────────────
+
+    /** Returns true if the given player UUID is currently authenticated. */
+    public boolean isAuthenticated(UUID uuid) {
+        return authenticatedPlayers.contains(uuid);
+    }
+
     /**
-     * Mark a player as authenticated.
-     * Should be called by plugin messaging from the backend AuthMe server after a
-     * successful login/register event on the backend.
+     * Externally mark a player as authenticated (e.g. via plugin messaging from
+     * the backend AuthMe server).
      */
     public void markAuthenticated(UUID playerUuid, String playerName) {
         authenticatedPlayers.add(playerUuid);
-        logger.debug("Player authenticated via plugin messaging: " + playerName);
+        logger.debug("Player marked authenticated externally: " + playerName);
     }
+
+    // ── lifecycle events ──────────────────────────────────────────────────────
 
     @Subscribe
     public void onLogin(LoginEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        // Reset auth state on every new proxy connection
         authenticatedPlayers.remove(uuid);
         playersOnAuthServer.remove(uuid);
     }
@@ -74,108 +84,127 @@ public class AuthListener {
         playersOnAuthServer.remove(uuid);
     }
 
+    // ── server connection events ──────────────────────────────────────────────
+
+    /**
+     * PRE-connect: block access to servers that are in the blocked-servers list.
+     * Using the Pre event means the connection is denied before it is established,
+     * not after — so the player never briefly appears on the blocked server.
+     */
+    @Subscribe(order = PostOrder.EARLY)
+    public void onServerPreConnect(ServerPreConnectEvent event) {
+        String target = event.getOriginalServer().getServerInfo().getName();
+
+        // Always allow the auth server itself
+        if (target.equalsIgnoreCase(configManager.getAuthServer())) return;
+
+        if (configManager.getBlockedServers().contains(target.toLowerCase())) {
+            event.setResult(ServerPreConnectEvent.ServerResult.denied());
+            String msg = configManager.getMessage("server-blocked");
+            event.getPlayer().sendMessage(MessageUtils.colorize(
+                msg != null && !msg.isEmpty() ? msg : "&cYou cannot connect to that server."));
+        }
+    }
+
+    /**
+     * POST-connect: track auth-server presence and update player visibility.
+     */
     @Subscribe
     public void onServerConnected(ServerConnectedEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        String currentServer = event.getServer().getServerInfo().getName();
-        String authServer = configManager.getAuthServer();
+        String current = event.getServer().getServerInfo().getName();
+        String authSrv = configManager.getAuthServer();
 
-        if (currentServer.equalsIgnoreCase(authServer)) {
-            // Player is on the auth server — track them and show hider
+        if (current.equalsIgnoreCase(authSrv)) {
             playersOnAuthServer.add(uuid);
             playerHider.hidePlayer(player);
         } else {
-            // Player moved away from a server
             if (playersOnAuthServer.contains(uuid)) {
-                // They were on the auth server and moved off — this is the expected
-                // AuthMe post-login redirect. Grant authenticated state.
-                // Note: for stronger security, prefer plugin messaging from the backend.
+                // Legitimate AuthMe post-login redirect: auth server → other server
                 authenticatedPlayers.add(uuid);
                 playersOnAuthServer.remove(uuid);
-                logger.debug("Player left auth server, granting auth state: " + player.getUsername());
+                logger.debug("Auth state granted (auth-server transition): "
+                        + player.getUsername());
             }
             playerHider.showPlayer(player);
         }
     }
 
+    // ── command gating ────────────────────────────────────────────────────────
+
+    /**
+     * Runs at DEFAULT order — FakePluginListener (EARLY) runs first, so when it
+     * has already denied a plugin-info command this handler sees result ≠ allowed
+     * and exits immediately, preventing a duplicate "command-blocked" message.
+     */
     @Subscribe
     public void onCommandExecute(CommandExecuteEvent event) {
-        if (!(event.getCommandSource() instanceof Player)) {
-            return;
-        }
+        if (!(event.getCommandSource() instanceof Player)) return;
+
+        // If another listener (e.g. FakePluginListener) already handled this, stop here
+        if (!event.getResult().isAllowed()) return;
 
         Player player = (Player) event.getCommandSource();
-        String command = event.getCommand().toLowerCase();
-        String commandName = extractCommandName(command);
+        String rawCommand = event.getCommand().toLowerCase();
+        String commandName = extractCommandName(rawCommand);
 
-        // Block globally blocked commands for everyone
+        // ── globally blocked (plugins, ver, about …) — blocked for everyone ──
         if (whitelistManager.isGloballyBlockedCommand(commandName)) {
             event.setResult(CommandExecuteEvent.CommandResult.denied());
-            sendBlockedMessage(player, "command-blocked");
+            // No message here: FakePluginListener sends the fake plugin list.
+            // For any non-plugin-info command that ends up here, send generic block msg.
             return;
         }
 
         boolean authenticated = authenticatedPlayers.contains(player.getUniqueId());
 
         if (!authenticated) {
-            // Always-allowed commands (e.g. /login, /register) pass through
-            if (whitelistManager.isAlwaysAllowedCommand(commandName)) {
-                return;
-            }
+            if (whitelistManager.isAlwaysAllowedCommand(commandName)) return;
+            if (whitelistManager.isWhitelistedCommandOnAuth(commandName)) return;
 
-            // Also allow other whitelisted auth-server commands
-            if (whitelistManager.isWhitelistedCommandOnAuth(commandName)) {
-                return;
-            }
-
-            // Block everything else for unauthenticated players
             event.setResult(CommandExecuteEvent.CommandResult.denied());
-            sendBlockedMessage(player, "not-logged-in");
+            sendMessage(player, "not-logged-in");
             return;
         }
 
-        // Authenticated players on auth server cannot use server-switching commands
+        // Authenticated players on the auth server cannot switch servers via commands
         String currentServer = getCurrentServerName(player);
         if (currentServer.equalsIgnoreCase(configManager.getAuthServer())) {
             if (whitelistManager.isServerSwitchingCommand(commandName)) {
                 event.setResult(CommandExecuteEvent.CommandResult.denied());
-                sendBlockedMessage(player, "server-blocked");
+                sendMessage(player, "server-blocked");
             }
         }
     }
 
+    // ── helpers ───────────────────────────────────────────────────────────────
+
     private String extractCommandName(String command) {
         command = command.trim();
-        if (command.startsWith("/")) {
-            command = command.substring(1);
-        }
+        if (command.startsWith("/")) command = command.substring(1);
 
-        int spaceIndex = command.indexOf(' ');
-        if (spaceIndex != -1) {
-            command = command.substring(0, spaceIndex);
-        }
+        // Strip args
+        int space = command.indexOf(' ');
+        if (space != -1) command = command.substring(0, space);
 
-        int colonIndex = command.indexOf(':');
-        if (colonIndex != -1) {
-            command = command.substring(colonIndex + 1);
-        }
+        // Strip namespace prefix (bukkit:pl → pl, spigot:plugins → plugins)
+        // so namespaced variants hit the same whitelist / blocked checks
+        int colon = command.indexOf(':');
+        if (colon != -1) command = command.substring(colon + 1);
 
-        return command.toLowerCase();
+        return command;
     }
 
     private String getCurrentServerName(Player player) {
-        Optional<ServerConnection> connection = player.getCurrentServer();
-        if (connection.isPresent()) {
-            return connection.get().getServerInfo().getName();
-        }
-        return "unknown";
+        Optional<ServerConnection> conn = player.getCurrentServer();
+        return conn.map(c -> c.getServerInfo().getName()).orElse("unknown");
     }
 
-    private void sendBlockedMessage(Player player, String messageKey) {
-        String message = configManager.getMessage(messageKey);
-        if (message != null && !message.isEmpty()) {
-            player.sendMessage(MessageUtils.colorize(message));
+    private void sendMessage(Player player, String key) {
+        String msg = configManager.getMessage(key);
+        if (msg != null && !msg.isEmpty()) {
+            player.sendMessage(MessageUtils.colorize(msg));
         }
     }
 }
