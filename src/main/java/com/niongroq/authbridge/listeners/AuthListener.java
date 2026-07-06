@@ -10,6 +10,7 @@ import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
+import com.niongroq.authbridge.managers.AuthServerGuard;
 import com.niongroq.authbridge.managers.BossBarManager;
 import com.niongroq.authbridge.managers.ConfigManager;
 import com.niongroq.authbridge.managers.WhitelistManager;
@@ -29,6 +30,7 @@ public class AuthListener {
     private final WhitelistManager whitelistManager;
     private final PlayerHider playerHider;
     private final BossBarManager bossBarManager;
+    private final AuthServerGuard authServerGuard;
     private final Logger logger;
 
     /**
@@ -46,12 +48,14 @@ public class AuthListener {
 
     public AuthListener(ProxyServer server, ConfigManager configManager,
                         WhitelistManager whitelistManager, PlayerHider playerHider,
-                        BossBarManager bossBarManager, Logger logger) {
+                        BossBarManager bossBarManager, AuthServerGuard authServerGuard,
+                        Logger logger) {
         this.server = server;
         this.configManager = configManager;
         this.whitelistManager = whitelistManager;
         this.playerHider = playerHider;
         this.bossBarManager = bossBarManager;
+        this.authServerGuard = authServerGuard;
         this.logger = logger;
     }
 
@@ -125,6 +129,7 @@ public class AuthListener {
             playersOnAuthServer.add(uuid);
             playerHider.hidePlayer(player);
             bossBarManager.startTimer(player);
+            authServerGuard.protect(player);
         } else {
             if (playersOnAuthServer.contains(uuid)) {
                 // Legitimate AuthMe post-login redirect: auth server → other server
