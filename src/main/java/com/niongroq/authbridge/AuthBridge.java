@@ -9,6 +9,7 @@ import com.niongroq.authbridge.listeners.AuthListener;
 import com.niongroq.authbridge.listeners.FakePluginListener;
 import com.niongroq.authbridge.listeners.PluginChannelListener;
 import com.niongroq.authbridge.listeners.TabCompleteListener;
+import com.niongroq.authbridge.managers.AuthServerGuard;
 import com.niongroq.authbridge.managers.BossBarManager;
 import com.niongroq.authbridge.managers.ConfigManager;
 import com.niongroq.authbridge.managers.WhitelistManager;
@@ -37,6 +38,7 @@ public class AuthBridge {
     private WhitelistManager whitelistManager;
     private PlayerHider playerHider;
     private BossBarManager bossBarManager;
+    private AuthServerGuard authServerGuard;
 
     @Inject
     public AuthBridge(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
@@ -61,7 +63,8 @@ public class AuthBridge {
             whitelistManager.loadWhitelist();
             logger.info("✓ Configurations loaded successfully");
 
-            this.bossBarManager = new BossBarManager(this, server, configManager, logger);
+            this.bossBarManager   = new BossBarManager(this, server, configManager, logger);
+            this.authServerGuard  = new AuthServerGuard(this, server, configManager, logger);
 
             registerListeners();
             registerCommands();
@@ -82,7 +85,8 @@ public class AuthBridge {
         // Core auth listener — must be registered first so TabCompleteListener
         // can hold a reference to its isAuthenticated() method
         AuthListener authListener = new AuthListener(
-            server, configManager, whitelistManager, playerHider, bossBarManager, logger);
+            server, configManager, whitelistManager, playerHider,
+            bossBarManager, authServerGuard, logger);
 
         // Security: intercept /plugins, /pl, /ver … and respond with fake list.
         // Runs at PostOrder.EARLY — before AuthListener's generic command blocker.
