@@ -9,6 +9,7 @@ import com.niongroq.authbridge.listeners.AuthListener;
 import com.niongroq.authbridge.listeners.FakePluginListener;
 import com.niongroq.authbridge.listeners.PluginChannelListener;
 import com.niongroq.authbridge.listeners.TabCompleteListener;
+import com.niongroq.authbridge.managers.BossBarManager;
 import com.niongroq.authbridge.managers.ConfigManager;
 import com.niongroq.authbridge.managers.WhitelistManager;
 import com.niongroq.authbridge.managers.PlayerHider;
@@ -35,6 +36,7 @@ public class AuthBridge {
     private ConfigManager configManager;
     private WhitelistManager whitelistManager;
     private PlayerHider playerHider;
+    private BossBarManager bossBarManager;
 
     @Inject
     public AuthBridge(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
@@ -51,13 +53,15 @@ public class AuthBridge {
             logger.info("║              By: S1MPLE                    ║");
             logger.info("╚════════════════════════════════════════════╝");
 
-            this.configManager   = new ConfigManager(dataDirectory, logger);
+            this.configManager    = new ConfigManager(dataDirectory, logger);
             this.whitelistManager = new WhitelistManager(dataDirectory, logger);
-            this.playerHider     = new PlayerHider(server, configManager, logger);
+            this.playerHider      = new PlayerHider(server, configManager, logger);
 
             configManager.loadConfig();
             whitelistManager.loadWhitelist();
             logger.info("✓ Configurations loaded successfully");
+
+            this.bossBarManager = new BossBarManager(this, server, configManager, logger);
 
             registerListeners();
             registerCommands();
@@ -78,7 +82,7 @@ public class AuthBridge {
         // Core auth listener — must be registered first so TabCompleteListener
         // can hold a reference to its isAuthenticated() method
         AuthListener authListener = new AuthListener(
-            server, configManager, whitelistManager, playerHider, logger);
+            server, configManager, whitelistManager, playerHider, bossBarManager, logger);
 
         // Security: intercept /plugins, /pl, /ver … and respond with fake list.
         // Runs at PostOrder.EARLY — before AuthListener's generic command blocker.
