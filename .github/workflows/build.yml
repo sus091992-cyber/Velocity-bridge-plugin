@@ -1,12 +1,12 @@
-name: Build AuthBridge
+name: Build & Release AuthBridge
 
 on:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main ]
-  release:
-    types: [ created ]
 
 jobs:
   build:
@@ -16,10 +16,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 11
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: '21'
           distribution: 'temurin'
           cache: maven
 
@@ -29,12 +29,26 @@ jobs:
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AuthBridge-3.0.0
-          path: target/AuthBridge-3.0.0.jar
+          name: AuthBridge-3.1.0
+          path: target/AuthBridge-3.1.0.jar
           retention-days: 30
 
-      - name: Attach JAR to release
-        if: github.event_name == 'release'
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: target/AuthBridge-3.0.0.jar
+          name: "AuthBridge ${{ github.ref_name }}"
+          body: |
+            ## AuthBridge ${{ github.ref_name }}
+
+            ### تغییرات این نسخه
+            - **BossBar → RaidBar**: نوار بوس‌بار به raid-bar تغییر نام یافت، رنگ پیش‌فرض PINK
+            - **Player Hider واقعی**: پلیرهای روی سرور auth از تب‌لیست همه حذف می‌شن (Velocity TabList API)
+            - **حذف RCON**: بخش RCON و AuthServerGuard کاملاً برداشته شد
+            - **کد تمیزتر**: ارجاع به UUID بجای username در PlayerHider
+
+            ### نصب
+            فایل JAR را در پوشه `plugins/` سرور Velocity قرار دهید.
+          files: target/AuthBridge-3.1.0.jar
+          draft: false
+          prerelease: false
