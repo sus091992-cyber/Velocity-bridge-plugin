@@ -9,8 +9,6 @@
 ![Java](https://img.shields.io/badge/Java-17+-orange)
 ![License](https://img.shields.io/badge/license-MIT-purple)
 
-[![🇮🇷 مستندات فارسی](https://img.shields.io/badge/🇮🇷-مستندات_فارسی-brightgreen)](README_FA.md)
-
 </div>
 
 ---
@@ -18,10 +16,10 @@
 ## 📋 Features
 
 ### 🔒 Authentication Gate
-Players are automatically routed to the **auth server** when they first connect. Until they log in via AuthMe (or a compatible plugin), they are locked in place — no server switching, no unauthorized commands.
+Players are automatically routed to the **auth server** when they first connect. Until they log in via AuthMe (or a compatible plugin), they are completely locked in place — no server switching, no unauthorized commands.
 
 - Tracks authenticated vs. unauthenticated state per player
-- Auth state is cleared on every disconnect, so reconnecting players always start fresh
+- Auth state is cleared on every disconnect so reconnecting players always start fresh
 - Supports external auth confirmation via plugin messaging channel (`authbridge:auth`)
 
 ---
@@ -29,13 +27,13 @@ Players are automatically routed to the **auth server** when they first connect.
 ### 👻 Player Hider (Tab List)
 Any player on the auth server is **completely invisible** to everyone else — and sees no one themselves.
 
-- Removed from every other player's tab list the moment they join auth
+- Removed from every other player's tab list the moment they join the auth server
 - Their own tab list is fully wiped on join
-- Restored automatically after successful login and server transfer
-- No player on auth can see any other player, including other auth players
+- Restored automatically after a successful login and server transfer
+- No player on auth can see any other player, including other players also on auth
 - Configurable via `player-hider.enabled` and `player-hider.hide-in-tablist`
 
-> **In-game (world) visibility:** Velocity is a proxy and cannot send entity packets directly.  
+> **In-game (world) visibility:** Velocity is a proxy and cannot send entity packets directly.
 > To hide players in the game world, configure your backend AuthMe plugin to set joining players to **SPECTATOR** mode.
 
 ---
@@ -44,17 +42,17 @@ Any player on the auth server is **completely invisible** to everyone else — a
 A **pink raid-style bar** counts down the seconds a player has left to log in.
 
 - Shown immediately when a player lands on the auth server
-- Title updates every second with remaining time via `%timer_bos%` placeholder
+- Title updates every second with remaining time via the `%timer_bos%` placeholder
 - Bar shrinks as time runs out
 - Player is kicked with a configurable message when the timer reaches zero
 - Cancelled automatically on successful login
-- Color, duration, and message fully configurable
+- Color, duration, and message are fully configurable
 
 ```yaml
 raidbar:
   enabled: true
   timer: 60          # seconds before kick
-  color: PINK        # BossBar color (PINK, RED, BLUE, GREEN, YELLOW, PURPLE, WHITE)
+  color: PINK        # PINK, RED, BLUE, GREEN, YELLOW, PURPLE, WHITE
   message: "&fYou only have &c%timer_bos% &fseconds to login"
 ```
 
@@ -63,9 +61,9 @@ raidbar:
 ### 🚫 Blocked Servers
 Certain servers can be made completely inaccessible to all players.
 
-- Configured in `blocked-servers` list
+- Configured in the `blocked-servers` list
 - Connection is denied **before** it is established (pre-connect event)
-- Players receive a configurable "server-blocked" message
+- Players receive a configurable `server-blocked` message
 
 ---
 
@@ -82,7 +80,7 @@ custom-aliases:
 ---
 
 ### 🤖 Auto-Alias Registration
-Automatically registers `/servername` commands for every server defined in `velocity.toml`.
+Automatically registers a `/servername` command for every server defined in `velocity.toml`.
 
 - Skips the auth server and any blocked servers
 - Can be disabled with `settings.auto-alias.enabled: false`
@@ -96,7 +94,7 @@ Unauthenticated players on the auth server are restricted to a whitelist of allo
 - Globally blocked commands (`/plugins`, `/pl`, `/version`, `/ver`, `/about`) are hidden from **all** players
 - Unauthenticated players can only run commands listed in `whitelist.yml`
 - Authenticated players on the auth server cannot use server-switching commands
-- Configurable allowlist via `whitelist.yml`
+- Allowlist is configurable via `whitelist.yml`
 
 ---
 
@@ -208,8 +206,8 @@ globally-blocked:
 
 ## 🚀 Installation
 
-1. Build the plugin with Maven: `mvn clean package`
-2. Copy the resulting `.jar` from `target/` into your Velocity `plugins/` folder
+1. Build the plugin: `mvn clean package`
+2. Copy `target/AuthBridge-3.1.0.jar` into your Velocity `plugins/` folder
 3. Start Velocity once to generate `config.yml` and `whitelist.yml`
 4. Edit both files to match your server setup
 5. Restart Velocity
