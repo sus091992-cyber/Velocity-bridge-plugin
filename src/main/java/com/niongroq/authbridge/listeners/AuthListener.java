@@ -10,8 +10,7 @@ import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
-import com.niongroq.authbridge.managers.AuthServerGuard;
-import com.niongroq.authbridge.managers.BossBarManager;
+import com.niongroq.authbridge.managers.RaidBarManager;
 import com.niongroq.authbridge.managers.ConfigManager;
 import com.niongroq.authbridge.managers.WhitelistManager;
 import com.niongroq.authbridge.managers.PlayerHider;
@@ -29,8 +28,7 @@ public class AuthListener {
     private final ConfigManager configManager;
     private final WhitelistManager whitelistManager;
     private final PlayerHider playerHider;
-    private final BossBarManager bossBarManager;
-    private final AuthServerGuard authServerGuard;
+    private final RaidBarManager raidBarManager;
     private final Logger logger;
 
     /**
@@ -48,15 +46,13 @@ public class AuthListener {
 
     public AuthListener(ProxyServer server, ConfigManager configManager,
                         WhitelistManager whitelistManager, PlayerHider playerHider,
-                        BossBarManager bossBarManager, AuthServerGuard authServerGuard,
-                        Logger logger) {
-        this.server = server;
-        this.configManager = configManager;
+                        RaidBarManager raidBarManager, Logger logger) {
+        this.server           = server;
+        this.configManager    = configManager;
         this.whitelistManager = whitelistManager;
-        this.playerHider = playerHider;
-        this.bossBarManager = bossBarManager;
-        this.authServerGuard = authServerGuard;
-        this.logger = logger;
+        this.playerHider      = playerHider;
+        this.raidBarManager   = raidBarManager;
+        this.logger           = logger;
     }
 
     // ── public API used by TabCompleteListener ────────────────────────────────
@@ -90,21 +86,19 @@ public class AuthListener {
         UUID uuid = player.getUniqueId();
         authenticatedPlayers.remove(uuid);
         playersOnAuthServer.remove(uuid);
-        bossBarManager.stopTimer(player);
+        raidBarManager.stopTimer(player);
+        playerHider.cleanupPlayer(uuid);
     }
 
     // ── server connection events ──────────────────────────────────────────────
 
     /**
      * PRE-connect: block access to servers that are in the blocked-servers list.
-     * Using the Pre event means the connection is denied before it is established,
-     * not after — so the player never briefly appears on the blocked server.
      */
     @Subscribe(order = PostOrder.EARLY)
     public void onServerPreConnect(ServerPreConnectEvent event) {
         String target = event.getOriginalServer().getServerInfo().getName();
 
-        // Always allow the auth server itself
         if (target.equalsIgnoreCase(configManager.getAuthServer())) return;
 
         if (configManager.getBlockedServers().contains(target.toLowerCase())) {
@@ -128,14 +122,13 @@ public class AuthListener {
         if (current.equalsIgnoreCase(authSrv)) {
             playersOnAuthServer.add(uuid);
             playerHider.hidePlayer(player);
-            bossBarManager.startTimer(player);
-            authServerGuard.protect(player);
+            raidBarManager.startTimer(player);
         } else {
             if (playersOnAuthServer.contains(uuid)) {
                 // Legitimate AuthMe post-login redirect: auth server → other server
                 authenticatedPlayers.add(uuid);
                 playersOnAuthServer.remove(uuid);
-                bossBarManager.stopTimer(player);
+                raidBarManager.stopTimer(player);
                 logger.debug("Auth state granted (auth-server transition): "
                         + player.getUsername());
             }
@@ -145,27 +138,19 @@ public class AuthListener {
 
     // ── command gating ────────────────────────────────────────────────────────
 
-    /**
-     * Runs at DEFAULT order — FakePluginListener (EARLY) runs first, so when it
-     * has already denied a plugin-info command this handler sees result ≠ allowed
-     * and exits immediately, preventing a duplicate "command-blocked" message.
-     */
     @Subscribe
     public void onCommandExecute(CommandExecuteEvent event) {
         if (!(event.getCommandSource() instanceof Player)) return;
 
-        // If another listener (e.g. FakePluginListener) already handled this, stop here
         if (!event.getResult().isAllowed()) return;
 
         Player player = (Player) event.getCommandSource();
         String rawCommand = event.getCommand().toLowerCase();
         String commandName = extractCommandName(rawCommand);
 
-        // ── globally blocked (plugins, ver, about …) — blocked for everyone ──
+        // Globally blocked (plugins, ver, about …) — blocked for everyone
         if (whitelistManager.isGloballyBlockedCommand(commandName)) {
             event.setResult(CommandExecuteEvent.CommandResult.denied());
-            // No message here: FakePluginListener sends the fake plugin list.
-            // For any non-plugin-info command that ends up here, send generic block msg.
             return;
         }
 
@@ -196,12 +181,9 @@ public class AuthListener {
         command = command.trim();
         if (command.startsWith("/")) command = command.substring(1);
 
-        // Strip args
         int space = command.indexOf(' ');
         if (space != -1) command = command.substring(0, space);
 
-        // Strip namespace prefix (bukkit:pl → pl, spigot:plugins → plugins)
-        // so namespaced variants hit the same whitelist / blocked checks
         int colon = command.indexOf(':');
         if (colon != -1) command = command.substring(colon + 1);
 

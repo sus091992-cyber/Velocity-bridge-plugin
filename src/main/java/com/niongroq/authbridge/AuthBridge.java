@@ -9,8 +9,7 @@ import com.niongroq.authbridge.listeners.AuthListener;
 import com.niongroq.authbridge.listeners.FakePluginListener;
 import com.niongroq.authbridge.listeners.PluginChannelListener;
 import com.niongroq.authbridge.listeners.TabCompleteListener;
-import com.niongroq.authbridge.managers.AuthServerGuard;
-import com.niongroq.authbridge.managers.BossBarManager;
+import com.niongroq.authbridge.managers.RaidBarManager;
 import com.niongroq.authbridge.managers.ConfigManager;
 import com.niongroq.authbridge.managers.WhitelistManager;
 import com.niongroq.authbridge.managers.PlayerHider;
@@ -24,7 +23,7 @@ import java.nio.file.Path;
 @Plugin(
     id = "authbridge",
     name = "AuthBridge",
-    version = "3.0.0",
+    version = "3.1.0",
     description = "Professional authentication bridge plugin for Velocity",
     authors = {"S1MPLE"}
 )
@@ -37,13 +36,12 @@ public class AuthBridge {
     private ConfigManager configManager;
     private WhitelistManager whitelistManager;
     private PlayerHider playerHider;
-    private BossBarManager bossBarManager;
-    private AuthServerGuard authServerGuard;
+    private RaidBarManager raidBarManager;
 
     @Inject
     public AuthBridge(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
-        this.server = server;
-        this.logger = logger;
+        this.server        = server;
+        this.logger        = logger;
         this.dataDirectory = dataDirectory;
     }
 
@@ -51,7 +49,7 @@ public class AuthBridge {
     public void onProxyInitialize(ProxyInitializeEvent event) {
         try {
             logger.info("╔════════════════════════════════════════════╗");
-            logger.info("║          AuthBridge v3.0.0 Loading         ║");
+            logger.info("║          AuthBridge v3.1.0 Loading         ║");
             logger.info("║              By: S1MPLE                    ║");
             logger.info("╚════════════════════════════════════════════╝");
 
@@ -63,8 +61,7 @@ public class AuthBridge {
             whitelistManager.loadWhitelist();
             logger.info("✓ Configurations loaded successfully");
 
-            this.bossBarManager   = new BossBarManager(this, server, configManager, logger);
-            this.authServerGuard  = new AuthServerGuard(this, server, configManager, logger);
+            this.raidBarManager = new RaidBarManager(this, server, configManager, logger);
 
             registerListeners();
             registerCommands();
@@ -82,24 +79,12 @@ public class AuthBridge {
     }
 
     private void registerListeners() {
-        // Core auth listener — must be registered first so TabCompleteListener
-        // can hold a reference to its isAuthenticated() method
         AuthListener authListener = new AuthListener(
             server, configManager, whitelistManager, playerHider,
-            bossBarManager, authServerGuard, logger);
+            raidBarManager, logger);
 
-        // Security: intercept /plugins, /pl, /ver … and respond with fake list.
-        // Runs at PostOrder.EARLY — before AuthListener's generic command blocker.
         FakePluginListener fakePluginListener = new FakePluginListener(configManager, logger);
-
-        // Security: intercept plugin-channel messages from backend servers:
-        //   - minecraft:brand   → spoofed to "Minecraft"
-        //   - minecraft:register → plugin namespaces stripped
         PluginChannelListener channelListener = new PluginChannelListener(logger);
-
-        // Security: tab-complete lockdown.
-        //   - Unauthenticated players: only allowed commands visible
-        //   - All players: namespaced (plugin:cmd) suggestions removed
         TabCompleteListener tabListener = new TabCompleteListener(
             authListener, whitelistManager, logger);
 
@@ -155,10 +140,10 @@ public class AuthBridge {
 
     // ── accessors ─────────────────────────────────────────────────────────────
 
-    public ProxyServer getServer()               { return server; }
-    public Logger getLogger()                    { return logger; }
-    public Path getDataDirectory()               { return dataDirectory; }
-    public ConfigManager getConfigManager()      { return configManager; }
+    public ProxyServer getServer()                { return server; }
+    public Logger getLogger()                     { return logger; }
+    public Path getDataDirectory()                { return dataDirectory; }
+    public ConfigManager getConfigManager()       { return configManager; }
     public WhitelistManager getWhitelistManager() { return whitelistManager; }
-    public PlayerHider getPlayerHider()          { return playerHider; }
+    public PlayerHider getPlayerHider()           { return playerHider; }
 }

@@ -29,28 +29,20 @@ public class ConfigManager {
     private Map<String, String> customAliases;
     private Set<String> blockedServers;
     private boolean playerHiderEnabled;
+    private boolean hideInTabList;
     private boolean autoAliasEnabled;
 
-    private boolean bossBarEnabled;
-    private int     bossBarTimer;
-    private String  bossBarColor;
-    private String  bossBarMessage;
-
-    // auth-server-guard
-    private boolean authGuardEnabled;
-    private boolean guardNoBlockInteract;
-    private boolean guardNoDamage;
-    private boolean guardNoHunger;
-    private String  rconHost;
-    private int     rconPort;
-    private String  rconPassword;
+    private boolean raidBarEnabled;
+    private int     raidBarTimer;
+    private String  raidBarColor;
+    private String  raidBarMessage;
 
     public ConfigManager(Path dataDirectory, Logger logger) {
-        this.dataDirectory = dataDirectory;
-        this.logger        = logger;
-        this.configFile    = dataDirectory.resolve("config.yml").toFile();
-        this.messages      = new HashMap<>();
-        this.customAliases = new HashMap<>();
+        this.dataDirectory  = dataDirectory;
+        this.logger         = logger;
+        this.configFile     = dataDirectory.resolve("config.yml").toFile();
+        this.messages       = new HashMap<>();
+        this.customAliases  = new HashMap<>();
         this.blockedServers = new HashSet<>();
     }
 
@@ -81,33 +73,21 @@ public class ConfigManager {
 
     // ── getters ───────────────────────────────────────────────────────────────
 
-    public String getAuthServer()         { return authServer; }
-    public String getFakePluginPrefix()   { return fakePluginPrefix; }
-    public String getPluginMessage()      { return pluginMessage; }
-    public String getPluginFooter()       { return pluginFooter; }
+    public String getAuthServer()                 { return authServer; }
+    public String getFakePluginPrefix()           { return fakePluginPrefix; }
+    public String getPluginMessage()              { return pluginMessage; }
+    public String getPluginFooter()               { return pluginFooter; }
     public Map<String, String> getMessages()      { return messages; }
     public Map<String, String> getCustomAliases() { return customAliases; }
+    public Set<String> getBlockedServers()        { return blockedServers; }
     public boolean isPlayerHiderEnabled()         { return playerHiderEnabled; }
+    public boolean isHideInTabList()              { return hideInTabList; }
     public boolean isAutoAliasEnabled()           { return autoAliasEnabled; }
 
-    public boolean isBossBarEnabled()  { return bossBarEnabled; }
-    public int     getBossBarTimer()   { return bossBarTimer; }
-    public String  getBossBarColor()   { return bossBarColor; }
-    public String  getBossBarMessage() { return bossBarMessage; }
-
-    public boolean isAuthGuardEnabled()     { return authGuardEnabled; }
-    public boolean isGuardNoBlockInteract() { return guardNoBlockInteract; }
-    public boolean isGuardNoDamage()        { return guardNoDamage; }
-    public boolean isGuardNoHunger()        { return guardNoHunger; }
-    public String  getRconHost()            { return rconHost; }
-    public int     getRconPort()            { return rconPort; }
-    public String  getRconPassword()        { return rconPassword; }
-
-    /**
-     * Lower-cased set of server names that players should never be able to reach.
-     * Was previously parsed but never stored — fix for ServerCommand blocked-server check.
-     */
-    public Set<String> getBlockedServers() { return blockedServers; }
+    public boolean isRaidBarEnabled()  { return raidBarEnabled; }
+    public int     getRaidBarTimer()   { return raidBarTimer; }
+    public String  getRaidBarColor()   { return raidBarColor; }
+    public String  getRaidBarMessage() { return raidBarMessage; }
 
     public String getMessage(String key) {
         return messages.getOrDefault(key, "&cMessage not found: " + key);
@@ -118,7 +98,7 @@ public class ConfigManager {
     private void parseConfiguration() {
         authServer = config.node("auth-server").getString("auth");
 
-        // blocked-servers list (fix: was missing from previous implementation)
+        // blocked-servers
         blockedServers.clear();
         try {
             List<String> rawBlocked = config.node("blocked-servers").getList(String.class);
@@ -133,28 +113,19 @@ public class ConfigManager {
         ConfigurationNode fakeNode = config.node("fake-plugin");
         fakePluginPrefix = fakeNode.node("prefix").getString("&a&lNYX&f&lCORE");
         pluginMessage    = fakeNode.node("message").getString("&7Plugins (&a1&7): %plugin%");
-        pluginFooter    = fakeNode.node("footer").getString("&7There are &a1&7 plugins installed.");
+        pluginFooter     = fakeNode.node("footer").getString("");
 
         // player-hider
-        playerHiderEnabled = config.node("player-hider", "enabled").getBoolean(true);
+        ConfigurationNode hiderNode = config.node("player-hider");
+        playerHiderEnabled = hiderNode.node("enabled").getBoolean(true);
+        hideInTabList      = hiderNode.node("hide-in-tablist").getBoolean(true);
 
-        // bossbar
-        ConfigurationNode bbNode = config.node("bossbar");
-        bossBarEnabled = bbNode.node("enabled").getBoolean(true);
-        bossBarTimer   = bbNode.node("timer").getInt(60);
-        bossBarColor   = bbNode.node("color").getString("RED");
-        bossBarMessage = bbNode.node("message").getString("&fShoma faghat &c%timer_bos% &fsanei vaght darid");
-
-        // auth-server-guard
-        ConfigurationNode guardNode = config.node("auth-server-guard");
-        authGuardEnabled     = guardNode.node("enabled").getBoolean(false);
-        guardNoBlockInteract = guardNode.node("no-block-interact").getBoolean(true);
-        guardNoDamage        = guardNode.node("no-damage").getBoolean(true);
-        guardNoHunger        = guardNode.node("no-hunger").getBoolean(true);
-        ConfigurationNode rconNode = guardNode.node("rcon");
-        rconHost     = rconNode.node("host").getString("127.0.0.1");
-        rconPort     = rconNode.node("port").getInt(25575);
-        rconPassword = rconNode.node("password").getString("");
+        // raidbar
+        ConfigurationNode rbNode = config.node("raidbar");
+        raidBarEnabled = rbNode.node("enabled").getBoolean(true);
+        raidBarTimer   = rbNode.node("timer").getInt(60);
+        raidBarColor   = rbNode.node("color").getString("PINK");
+        raidBarMessage = rbNode.node("message").getString("&fYou only have &c%timer_bos% &fseconds to login");
 
         // messages
         messages.clear();
@@ -188,9 +159,10 @@ public class ConfigManager {
             "  \"/hub\": \"/server lobby\"\n" +
             "  \"/l\": \"/server lobby\"\n\n" +
 
-            "# Hide players from each other while on the auth server\n" +
+            "# Hide players on the auth server from everyone (tab list)\n" +
             "player-hider:\n" +
-            "  enabled: true\n\n" +
+            "  enabled: true\n" +
+            "  hide-in-tablist: true\n\n" +
 
             "# Fake /plugins response\n" +
             "fake-plugin:\n" +
@@ -198,24 +170,11 @@ public class ConfigManager {
             "  message: \"&7Plugins (&a1&7): %plugin%\"\n" +
             "  footer: \"\"\n\n" +
 
-            "# Auth-server player protection (requires RCON on the auth backend)\n" +
-            "# Enable RCON in the auth server's server.properties:\n" +
-            "#   enable-rcon=true  |  rcon.port=25575  |  rcon.password=<your-password>\n" +
-            "auth-server-guard:\n" +
-            "  enabled: false\n" +
-            "  no-block-interact: true   # gamemode adventure (no break / place)\n" +
-            "  no-damage: true           # resistance V effect\n" +
-            "  no-hunger: true           # saturation 255 effect\n" +
-            "  rcon:\n" +
-            "    host: \"127.0.0.1\"\n" +
-            "    port: 25575\n" +
-            "    password: \"change-this\"\n\n" +
-
-            "# BossBar countdown timer on the auth server\n" +
-            "bossbar:\n" +
+            "# RaidBar countdown timer shown to players on the auth server\n" +
+            "raidbar:\n" +
             "  enabled: true\n" +
             "  timer: 60\n" +
-            "  color: RED\n" +
+            "  color: PINK\n" +
             "  message: \"&fYou only have &c%timer_bos% &fseconds to login\"\n\n" +
 
             "# Player-facing messages\n" +
@@ -223,7 +182,7 @@ public class ConfigManager {
             "  not-logged-in: \"&cYou must login first!\"\n" +
             "  command-blocked: \"&cThis command is blocked!\"\n" +
             "  server-blocked: \"&cYou cannot connect to that server!\"\n" +
-            "  bossbar-timeout: \"&cLogin time expired! Please reconnect.\"\n\n" +
+            "  raidbar-timeout: \"&cLogin time expired! Please reconnect.\"\n\n" +
 
             "settings:\n" +
             "  auto-alias:\n" +
