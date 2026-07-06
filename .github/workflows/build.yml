@@ -8,6 +8,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -45,7 +48,6 @@ jobs:
             - **BossBar → RaidBar**: نوار بوس‌بار به raid-bar تغییر نام یافت، رنگ پیش‌فرض PINK
             - **Player Hider واقعی**: پلیرهای روی سرور auth از تب‌لیست همه حذف می‌شن (Velocity TabList API)
             - **حذف RCON**: بخش RCON و AuthServerGuard کاملاً برداشته شد
-            - **کد تمیزتر**: ارجاع به UUID بجای username در PlayerHider
 
             ### نصب
             فایل JAR را در پوشه `plugins/` سرور Velocity قرار دهید.
