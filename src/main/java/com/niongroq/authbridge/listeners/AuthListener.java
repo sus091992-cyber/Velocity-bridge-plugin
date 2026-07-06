@@ -10,6 +10,7 @@ import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
+import com.niongroq.authbridge.managers.BossBarManager;
 import com.niongroq.authbridge.managers.ConfigManager;
 import com.niongroq.authbridge.managers.WhitelistManager;
 import com.niongroq.authbridge.managers.PlayerHider;
@@ -27,6 +28,7 @@ public class AuthListener {
     private final ConfigManager configManager;
     private final WhitelistManager whitelistManager;
     private final PlayerHider playerHider;
+    private final BossBarManager bossBarManager;
     private final Logger logger;
 
     /**
@@ -44,11 +46,12 @@ public class AuthListener {
 
     public AuthListener(ProxyServer server, ConfigManager configManager,
                         WhitelistManager whitelistManager, PlayerHider playerHider,
-                        Logger logger) {
+                        BossBarManager bossBarManager, Logger logger) {
         this.server = server;
         this.configManager = configManager;
         this.whitelistManager = whitelistManager;
         this.playerHider = playerHider;
+        this.bossBarManager = bossBarManager;
         this.logger = logger;
     }
 
@@ -79,9 +82,11 @@ public class AuthListener {
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
-        UUID uuid = event.getPlayer().getUniqueId();
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
         authenticatedPlayers.remove(uuid);
         playersOnAuthServer.remove(uuid);
+        bossBarManager.stopTimer(player);
     }
 
     // ── server connection events ──────────────────────────────────────────────
@@ -119,11 +124,13 @@ public class AuthListener {
         if (current.equalsIgnoreCase(authSrv)) {
             playersOnAuthServer.add(uuid);
             playerHider.hidePlayer(player);
+            bossBarManager.startTimer(player);
         } else {
             if (playersOnAuthServer.contains(uuid)) {
                 // Legitimate AuthMe post-login redirect: auth server → other server
                 authenticatedPlayers.add(uuid);
                 playersOnAuthServer.remove(uuid);
+                bossBarManager.stopTimer(player);
                 logger.debug("Auth state granted (auth-server transition): "
                         + player.getUsername());
             }
