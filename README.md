@@ -9,6 +9,8 @@
 ![Java](https://img.shields.io/badge/Java-17+-orange)
 ![License](https://img.shields.io/badge/license-MIT-purple)
 
+[![🇮🇷 مستندات فارسی](https://img.shields.io/badge/🇮🇷-مستندات_فارسی-brightgreen)](README_FA.md)
+
 </div>
 
 ---
