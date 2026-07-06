@@ -20,18 +20,25 @@ player-hider:
   hide-in-tablist: true
   game-mode: "ADVENTURE"
   messages:
-    hidden: "&7شما مخفی شدید."
-    shown: "&aشما از حالت مخفی خارج شدید."
+    hidden: "&7You are now hidden."
+    shown: "&aYou are no longer hidden."
 
 fake-plugin:
   prefix: "&a&lNYX&f&lCORE"
   message: "&7Plugins (&a1&7): %plugin%"
   footer: ""
 
+bossbar:
+  enabled: true
+  timer: 60
+  color: RED
+  message: "&fYou only have &c%timer_bos% &fseconds to login"
+
 messages:
-  not-logged-in: "&cشما ابتدا باید لاگین کنید!"
-  command-blocked: "&cاین دستور مسدود است!"
-  server-blocked: "&cشما نمی‌تواند از این سرور برافتید!"
+  not-logged-in: "&cYou must login first!"
+  command-blocked: "&cThis command is blocked!"
+  server-blocked: "&cYou cannot connect to that server!"
+  bossbar-timeout: "&cLogin time expired! Please reconnect."
 
 settings:
   enabled: true
