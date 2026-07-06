@@ -27,9 +27,14 @@ public class ConfigManager {
     private String pluginFooter;
     private Map<String, String> messages;
     private Map<String, String> customAliases;
-    private Set<String> blockedServers;        // fix: was never loaded before
+    private Set<String> blockedServers;
     private boolean playerHiderEnabled;
     private boolean autoAliasEnabled;
+
+    private boolean bossBarEnabled;
+    private int     bossBarTimer;
+    private String  bossBarColor;
+    private String  bossBarMessage;
 
     public ConfigManager(Path dataDirectory, Logger logger) {
         this.dataDirectory = dataDirectory;
@@ -76,6 +81,11 @@ public class ConfigManager {
     public boolean isPlayerHiderEnabled()         { return playerHiderEnabled; }
     public boolean isAutoAliasEnabled()           { return autoAliasEnabled; }
 
+    public boolean isBossBarEnabled()  { return bossBarEnabled; }
+    public int     getBossBarTimer()   { return bossBarTimer; }
+    public String  getBossBarColor()   { return bossBarColor; }
+    public String  getBossBarMessage() { return bossBarMessage; }
+
     /**
      * Lower-cased set of server names that players should never be able to reach.
      * Was previously parsed but never stored — fix for ServerCommand blocked-server check.
@@ -110,6 +120,13 @@ public class ConfigManager {
 
         // player-hider
         playerHiderEnabled = config.node("player-hider", "enabled").getBoolean(true);
+
+        // bossbar
+        ConfigurationNode bbNode = config.node("bossbar");
+        bossBarEnabled = bbNode.node("enabled").getBoolean(true);
+        bossBarTimer   = bbNode.node("timer").getInt(60);
+        bossBarColor   = bbNode.node("color").getString("RED");
+        bossBarMessage = bbNode.node("message").getString("&fShoma faghat &c%timer_bos% &fsanei vaght darid");
 
         // messages
         messages.clear();
@@ -153,11 +170,19 @@ public class ConfigManager {
             "  message: \"&7Plugins (&a1&7): %plugin%\"\n" +
             "  footer: \"\"\n\n" +
 
+            "# BossBar countdown timer on the auth server\n" +
+            "bossbar:\n" +
+            "  enabled: true\n" +
+            "  timer: 60\n" +
+            "  color: RED\n" +
+            "  message: \"&fYou only have &c%timer_bos% &fseconds to login\"\n\n" +
+
             "# Player-facing messages\n" +
             "messages:\n" +
             "  not-logged-in: \"&cYou must login first!\"\n" +
             "  command-blocked: \"&cThis command is blocked!\"\n" +
-            "  server-blocked: \"&cYou cannot connect to that server!\"\n\n" +
+            "  server-blocked: \"&cYou cannot connect to that server!\"\n" +
+            "  bossbar-timeout: \"&cLogin time expired! Please reconnect.\"\n\n" +
 
             "settings:\n" +
             "  auto-alias:\n" +
