@@ -3,6 +3,7 @@
 # 🔐 AuthBridge
 
 **A professional authentication bridge plugin for Velocity proxy**
+**پلاگین حرفه‌ای احراز هویت برای پروکسی Velocity**
 
 ![Version](https://img.shields.io/badge/version-3.1.0-blue)
 ![Velocity](https://img.shields.io/badge/Velocity-3.x-green)
@@ -12,6 +13,9 @@
 </div>
 
 ---
+
+<details open>
+<summary>🇬🇧 English</summary>
 
 ## 📋 Features
 
@@ -42,7 +46,7 @@ Any player on the auth server is **completely invisible** to everyone else — a
 A **pink raid-style bar** counts down the seconds a player has left to log in.
 
 - Shown immediately when a player lands on the auth server
-- Title updates every second with remaining time via the `%timer_bos%` placeholder
+- Title updates every second with remaining time via `%timer_bos%`
 - Bar shrinks as time runs out
 - Player is kicked with a configurable message when the timer reaches zero
 - Cancelled automatically on successful login
@@ -84,7 +88,6 @@ Automatically registers a `/servername` command for every server defined in `vel
 
 - Skips the auth server and any blocked servers
 - Can be disabled with `settings.auto-alias.enabled: false`
-- Example: `/survival` automatically becomes an alias for `/server survival`
 
 ---
 
@@ -94,15 +97,11 @@ Unauthenticated players on the auth server are restricted to a whitelist of allo
 - Globally blocked commands (`/plugins`, `/pl`, `/version`, `/ver`, `/about`) are hidden from **all** players
 - Unauthenticated players can only run commands listed in `whitelist.yml`
 - Authenticated players on the auth server cannot use server-switching commands
-- Allowlist is configurable via `whitelist.yml`
 
 ---
 
 ### 🎭 Fake Plugin List
-When a player runs `/plugins`, `/pl`, `/version`, or `/about`, the plugin responds with a **fake plugin list** instead of revealing the real server stack.
-
-- Prefix, plugin name, and footer are fully configurable
-- Prevents plugin fingerprinting by hack clients
+Responds to `/plugins`, `/pl`, `/version`, or `/about` with a **fake plugin list** instead of revealing the real server stack.
 
 ```yaml
 fake-plugin:
@@ -116,23 +115,21 @@ fake-plugin:
 ### 🔏 Tab-Complete Lockdown
 Tab-complete suggestions are sanitized for all players at `PostOrder.LAST` priority.
 
-- **Unauthenticated players:** suggestions are replaced with only the allowed command names from the whitelist
-- **All players:** namespaced suggestions (e.g. `authbridge:reload`, `luckperms:user`) are always stripped — hack clients use these to detect installed plugins
+- **Unauthenticated players:** suggestions are replaced with only the allowed commands from the whitelist
+- **All players:** namespaced suggestions (e.g. `authbridge:reload`) are stripped
 - **All players:** globally blocked commands are removed from suggestions
 
 ---
 
 ### 📡 Plugin Channel Guard
-Intercepts outgoing plugin channel messages from backend servers to prevent plugin fingerprinting.
+Intercepts outgoing plugin channel messages from backend servers.
 
 - `minecraft:brand` → spoofed to `"Minecraft"`
-- `minecraft:register` → plugin namespaces are stripped from the payload
+- `minecraft:register` → plugin namespaces stripped from payload
 
 ---
 
 ## ⚙️ Configuration
-
-Full `config.yml`:
 
 ```yaml
 auth-server: "auth"
@@ -177,11 +174,7 @@ settings:
     enabled: true
 ```
 
----
-
 ## 📁 whitelist.yml
-
-Controls which commands unauthenticated players are allowed to run on the auth server.
 
 ```yaml
 allowed-commands:
@@ -202,17 +195,13 @@ globally-blocked:
   - "about"
 ```
 
----
-
 ## 🚀 Installation
 
-1. Build the plugin: `mvn clean package`
-2. Copy `target/AuthBridge-3.1.0.jar` into your Velocity `plugins/` folder
-3. Start Velocity once to generate `config.yml` and `whitelist.yml`
-4. Edit both files to match your server setup
+1. Build: `mvn clean package`
+2. Copy `target/AuthBridge-3.1.0.jar` into Velocity `plugins/`
+3. Start Velocity once to generate config files
+4. Edit `config.yml` and `whitelist.yml` to match your setup
 5. Restart Velocity
-
----
 
 ## 🔌 Compatibility
 
@@ -222,8 +211,210 @@ globally-blocked:
 | Java | 17+ |
 | AuthMe (backend) | Any version with plugin messaging |
 
+## 👤 Author
+**S1MPLE** — AuthBridge v3.1.0
+
+</details>
+
 ---
 
-## 👤 Author
+<details>
+<summary>🇮🇷 فارسی</summary>
 
+## ✨ قابلیت‌ها
+
+### 🔒 دروازه احراز هویت
+پلیرها به محض اتصال به پروکسی، به طور خودکار وارد **سرور auth** می‌شوند. تا زمانی که از طریق AuthMe (یا پلاگین سازگار دیگری) لاگین نکنند، کاملاً محدود هستند — هیچ جابه‌جایی سرور و هیچ دستور غیرمجازی امکان‌پذیر نیست.
+
+- وضعیت احراز هویت هر پلیر به صورت جداگانه ردیابی می‌شود
+- با هر disconnect، وضعیت پاک می‌شود — پلیر مجبور است دوباره لاگین کند
+- پشتیبانی از تأیید خارجی احراز هویت از طریق plugin messaging (`authbridge:auth`)
+
+---
+
+### 👻 مخفی‌سازی پلیر (تب‌لیست)
+هر پلیری که وارد سرور auth شود **کاملاً از دید همه پنهان می‌شود** — و خودش هم هیچ‌کس را نمی‌بیند.
+
+- به محض ورود به auth، از تب‌لیست تمام پلیرهای دیگر حذف می‌شود
+- تب‌لیست خود پلیر نیز کاملاً پاک می‌شود
+- بعد از لاگین موفق و انتقال به سرور دیگر، به صورت خودکار بازمی‌گردد
+- هیچ پلیری در auth نمی‌تواند پلیر دیگری را ببیند، حتی پلیرهای دیگری که در auth هستند
+- قابل تنظیم از طریق `player-hider.enabled` و `player-hider.hide-in-tablist`
+
+> **مخفی‌سازی در دنیای بازی:** Velocity یک پروکسی است و نمی‌تواند مستقیماً packet موجودیت ارسال کند.
+> برای مخفی‌کردن پلیرها در دنیا، پلاگین AuthMe در بک‌اند را طوری تنظیم کنید که پلیرهای وارد شده را روی حالت **SPECTATOR** بگذارد.
+
+---
+
+### ⏱️ تایمر RaidBar (نوار رید)
+یک **نوار رید صورتی** ثانیه‌شماری می‌کند تا پلیر چقدر وقت برای لاگین دارد.
+
+- بلافاصله پس از ورود به سرور auth نمایش داده می‌شود
+- هر ثانیه عنوان با زمان باقی‌مانده بروز می‌شود (`%timer_bos%`)
+- نوار با گذشت زمان کوچک می‌شود
+- وقتی تایمر به صفر رسید، پلیر با پیام قابل تنظیم کیک می‌شود
+- با لاگین موفق خودکار متوقف می‌شود
+
+```yaml
+raidbar:
+  enabled: true
+  timer: 60          # ثانیه تا کیک
+  color: PINK        # PINK، RED، BLUE، GREEN، YELLOW، PURPLE، WHITE
+  message: "&fYou only have &c%timer_bos% &fseconds to login"
+```
+
+---
+
+### 🚫 سرورهای مسدود
+برخی سرورها می‌توانند برای همه پلیرها کاملاً غیرقابل دسترس باشند.
+
+- در لیست `blocked-servers` تنظیم می‌شود
+- اتصال **قبل از برقراری** رد می‌شود (pre-connect event)
+- پلیر پیام قابل تنظیم `server-blocked` دریافت می‌کند
+
+---
+
+### 🔗 دستورات میانبر سفارشی
+دستورات کوتاه‌نویسی تعریف کنید که به دستورات دیگر هدایت می‌شوند.
+
+```yaml
+custom-aliases:
+  "/hub": "/server lobby"
+  "/l": "/server lobby"
+  "/spawn": "/server lobby"
+```
+
+---
+
+### 🤖 ثبت خودکار Alias
+به طور خودکار دستور `/servername` برای هر سروری که در `velocity.toml` تعریف شده ثبت می‌کند.
+
+- سرور auth و سرورهای مسدود را رد می‌کند
+- با `settings.auto-alias.enabled: false` قابل غیرفعال‌کردن است
+
+---
+
+### 🛡️ محدودیت دستورات
+پلیرهای لاگین‌نشده در سرور auth فقط به لیست سفید دستورات دسترسی دارند.
+
+- دستورات بلاک شده جهانی (`/plugins`، `/pl`، `/version`، `/ver`، `/about`) از **همه** پنهان است
+- پلیرهای لاگین‌نشده فقط دستورات موجود در `whitelist.yml` را می‌توانند اجرا کنند
+- پلیرهای احراز هویت شده در auth نمی‌توانند دستورات جابه‌جایی سرور را اجرا کنند
+
+---
+
+### 🎭 لیست پلاگین جعلی
+وقتی پلیری `/plugins`، `/pl`، `/version` یا `/about` را اجرا می‌کند، به جای افشای استک واقعی سرور، **لیست پلاگین جعلی** ارسال می‌شود.
+
+```yaml
+fake-plugin:
+  prefix: "&a&lNYX&f&lCORE"
+  message: "&7Plugins (&a1&7): %plugin%"
+  footer: ""
+```
+
+---
+
+### 🔏 قفل Tab-Complete
+پیشنهادات tab-complete برای همه پلیرها با اولویت `PostOrder.LAST` پاکسازی می‌شود.
+
+- **پلیرهای لاگین‌نشده:** فقط دستورات مجاز از whitelist پیشنهاد می‌شود
+- **همه پلیرها:** پیشنهادات namespace‌دار (مثلاً `authbridge:reload`) همیشه حذف می‌شوند
+- **همه پلیرها:** دستورات بلاک شده جهانی از پیشنهادات حذف می‌شوند
+
+---
+
+### 📡 محافظ کانال پلاگین
+پیام‌های کانال پلاگین ارسال شده از سرورهای بک‌اند را رهگیری می‌کند.
+
+- `minecraft:brand` ← جعل می‌شود به `"Minecraft"`
+- `minecraft:register` ← namespace های پلاگین از payload حذف می‌شوند
+
+---
+
+## ⚙️ تنظیمات
+
+```yaml
+auth-server: "auth"
+
+blocked-servers:
+  - "admin"
+  - "maintenance"
+
+auth-required-servers:
+  - "lobby"
+  - "survival"
+  - "creative"
+
+custom-aliases:
+  "/hub": "/server lobby"
+  "/l": "/server lobby"
+  "/spawn": "/server lobby"
+
+player-hider:
+  enabled: true
+  hide-in-tablist: true
+
+fake-plugin:
+  prefix: "&a&lNYX&f&lCORE"
+  message: "&7Plugins (&a1&7): %plugin%"
+  footer: ""
+
+raidbar:
+  enabled: true
+  timer: 60
+  color: PINK
+  message: "&fYou only have &c%timer_bos% &fseconds to login"
+
+messages:
+  not-logged-in: "&cYou must login first!"
+  command-blocked: "&cThis command is blocked!"
+  server-blocked: "&cYou cannot connect to that server!"
+  raidbar-timeout: "&cLogin time expired! Please reconnect."
+
+settings:
+  auto-alias:
+    enabled: true
+```
+
+## 📁 whitelist.yml
+
+```yaml
+allowed-commands:
+  - "login"
+  - "l"
+  - "register"
+  - "reg"
+
+always-allowed:
+  - "login"
+  - "register"
+
+globally-blocked:
+  - "plugins"
+  - "pl"
+  - "version"
+  - "ver"
+  - "about"
+```
+
+## 🚀 نصب
+
+1. پلاگین را بیلد کنید: `mvn clean package`
+2. فایل `target/AuthBridge-3.1.0.jar` را در پوشه `plugins/` سرور Velocity کپی کنید
+3. یک بار Velocity را راه‌اندازی کنید تا فایل‌های تنظیمات ساخته شوند
+4. `config.yml` و `whitelist.yml` را مطابق سرور خود ویرایش کنید
+5. Velocity را ری‌استارت کنید
+
+## 🔌 سازگاری
+
+| نرم‌افزار | نسخه |
+|----------|------|
+| Velocity | 3.x |
+| Java | 17+ |
+| AuthMe (بک‌اند) | هر نسخه با پشتیبانی plugin messaging |
+
+## 👤 سازنده
 **S1MPLE** — AuthBridge v3.1.0
+
+</details>
