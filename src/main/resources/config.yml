@@ -28,6 +28,23 @@ fake-plugin:
   message: "&7Plugins (&a1&7): %plugin%"
   footer: ""
 
+# Auth-server player protection (requires RCON on the auth backend server)
+# Steps to enable:
+#   1. In the auth server's server.properties set:
+#        enable-rcon=true
+#        rcon.port=25575
+#        rcon.password=your_secret_password
+#   2. Set enabled: true here and fill in the rcon password below.
+auth-server-guard:
+  enabled: false
+  no-block-interact: true   # gamemode adventure — cannot break or place blocks
+  no-damage: true           # resistance V effect — immune to all damage
+  no-hunger: true           # saturation 255 effect — hunger bar never decreases
+  rcon:
+    host: "127.0.0.1"
+    port: 25575
+    password: "change-this"
+
 bossbar:
   enabled: true
   timer: 60
