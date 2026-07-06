@@ -36,6 +36,15 @@ public class ConfigManager {
     private String  bossBarColor;
     private String  bossBarMessage;
 
+    // auth-server-guard
+    private boolean authGuardEnabled;
+    private boolean guardNoBlockInteract;
+    private boolean guardNoDamage;
+    private boolean guardNoHunger;
+    private String  rconHost;
+    private int     rconPort;
+    private String  rconPassword;
+
     public ConfigManager(Path dataDirectory, Logger logger) {
         this.dataDirectory = dataDirectory;
         this.logger        = logger;
@@ -86,6 +95,14 @@ public class ConfigManager {
     public String  getBossBarColor()   { return bossBarColor; }
     public String  getBossBarMessage() { return bossBarMessage; }
 
+    public boolean isAuthGuardEnabled()     { return authGuardEnabled; }
+    public boolean isGuardNoBlockInteract() { return guardNoBlockInteract; }
+    public boolean isGuardNoDamage()        { return guardNoDamage; }
+    public boolean isGuardNoHunger()        { return guardNoHunger; }
+    public String  getRconHost()            { return rconHost; }
+    public int     getRconPort()            { return rconPort; }
+    public String  getRconPassword()        { return rconPassword; }
+
     /**
      * Lower-cased set of server names that players should never be able to reach.
      * Was previously parsed but never stored — fix for ServerCommand blocked-server check.
@@ -128,6 +145,17 @@ public class ConfigManager {
         bossBarColor   = bbNode.node("color").getString("RED");
         bossBarMessage = bbNode.node("message").getString("&fShoma faghat &c%timer_bos% &fsanei vaght darid");
 
+        // auth-server-guard
+        ConfigurationNode guardNode = config.node("auth-server-guard");
+        authGuardEnabled     = guardNode.node("enabled").getBoolean(false);
+        guardNoBlockInteract = guardNode.node("no-block-interact").getBoolean(true);
+        guardNoDamage        = guardNode.node("no-damage").getBoolean(true);
+        guardNoHunger        = guardNode.node("no-hunger").getBoolean(true);
+        ConfigurationNode rconNode = guardNode.node("rcon");
+        rconHost     = rconNode.node("host").getString("127.0.0.1");
+        rconPort     = rconNode.node("port").getInt(25575);
+        rconPassword = rconNode.node("password").getString("");
+
         // messages
         messages.clear();
         config.node("messages").childrenMap().forEach((key, node) ->
@@ -169,6 +197,19 @@ public class ConfigManager {
             "  prefix: \"&a&lNYX&f&lCORE\"\n" +
             "  message: \"&7Plugins (&a1&7): %plugin%\"\n" +
             "  footer: \"\"\n\n" +
+
+            "# Auth-server player protection (requires RCON on the auth backend)\n" +
+            "# Enable RCON in the auth server's server.properties:\n" +
+            "#   enable-rcon=true  |  rcon.port=25575  |  rcon.password=<your-password>\n" +
+            "auth-server-guard:\n" +
+            "  enabled: false\n" +
+            "  no-block-interact: true   # gamemode adventure (no break / place)\n" +
+            "  no-damage: true           # resistance V effect\n" +
+            "  no-hunger: true           # saturation 255 effect\n" +
+            "  rcon:\n" +
+            "    host: \"127.0.0.1\"\n" +
+            "    port: 25575\n" +
+            "    password: \"change-this\"\n\n" +
 
             "# BossBar countdown timer on the auth server\n" +
             "bossbar:\n" +
