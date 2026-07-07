@@ -21,7 +21,6 @@ public class RaidBarManager {
 
     private final Map<UUID, BossBar>       playerBars    = new ConcurrentHashMap<>();
     private final Map<UUID, ScheduledTask> playerTasks   = new ConcurrentHashMap<>();
-    /** Pending delayed-start tasks so stopTimer() can cancel them before they fire. */
     private final Map<UUID, ScheduledTask> pendingStarts = new ConcurrentHashMap<>();
 
     public RaidBarManager(Object plugin, ProxyServer server,
@@ -32,33 +31,25 @@ public class RaidBarManager {
         this.logger        = logger;
     }
 
-    /**
-     * Start the countdown for a player.
-     * We delay 600 ms before showing the bar so the player is fully connected
-     * and the backend's initial packet flood has settled.
-     */
     public void startTimer(Player player) {
         if (!configManager.isRaidBarEnabled()) return;
 
-        // Cancel any previous timer or pending start
         stopTimer(player);
 
-        int totalSeconds    = configManager.getRaidBarTimer();
-        int[] remaining     = {totalSeconds};
-        UUID uuid           = player.getUniqueId();
+        int totalSeconds = configManager.getRaidBarTimer();
+        int[] remaining  = {totalSeconds};
+        UUID uuid        = player.getUniqueId();
 
-        // Delay the actual bar creation by 600 ms
         ScheduledTask pending = server.getScheduler()
             .buildTask(plugin, () -> {
                 pendingStarts.remove(uuid);
-
                 if (!player.isActive()) return;
 
                 BossBar bar = BossBar.bossBar(
                     buildTitle(remaining[0]),
                     1.0f,
                     resolveColor(configManager.getRaidBarColor()),
-                    BossBar.Overlay.PROGRESS
+                    resolveOverlay(configManager.getRaidBarOverlay())
                 );
 
                 player.showBossBar(bar);
@@ -103,14 +94,10 @@ public class RaidBarManager {
 
     public void stopTimer(Player player) {
         UUID uuid = player.getUniqueId();
-
-        // Cancel pending delayed start
         ScheduledTask pending = pendingStarts.remove(uuid);
         if (pending != null) pending.cancel();
-
         BossBar bar = playerBars.remove(uuid);
         if (bar != null) player.hideBossBar(bar);
-
         ScheduledTask task = playerTasks.remove(uuid);
         if (task != null) task.cancel();
     }
@@ -131,8 +118,17 @@ public class RaidBarManager {
         try {
             return BossBar.Color.valueOf(name.toUpperCase());
         } catch (IllegalArgumentException e) {
-            logger.warn("Unknown raidbar color '{}', falling back to PINK", name);
-            return BossBar.Color.PINK;
+            logger.warn("Unknown raidbar color '{}', falling back to RED", name);
+            return BossBar.Color.RED;
+        }
+    }
+
+    private BossBar.Overlay resolveOverlay(String name) {
+        try {
+            return BossBar.Overlay.valueOf(name.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Unknown raidbar overlay '{}', falling back to NOTCHED_6", name);
+            return BossBar.Overlay.NOTCHED_6;
         }
     }
 }

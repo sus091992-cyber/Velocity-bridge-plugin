@@ -11,14 +11,13 @@ auth-required-servers:
   - "survival"
   - "creative"
 
-# Custom command shortcuts  (alias → target command)
+# Custom command shortcuts
 custom-aliases:
   "/hub": "/server lobby"
   "/l": "/server lobby"
   "/spawn": "/server lobby"
 
 # Hide players on the auth server from everyone (tab list)
-# No player on auth can see any other player — not even other auth players.
 player-hider:
   enabled: true
   hide-in-tablist: true
@@ -29,11 +28,15 @@ fake-plugin:
   message: "&7Plugins (&a1&7): %plugin%"
   footer: ""
 
-# RaidBar countdown timer shown to players while on the auth server
+# RaidBar countdown timer shown to players on the auth server
+#
+# color options   : PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE
+# overlay options : PROGRESS, NOTCHED_6, NOTCHED_10, NOTCHED_12, NOTCHED_20
 raidbar:
   enabled: true
   timer: 60
-  color: PINK
+  color: RED
+  overlay: NOTCHED_6
   message: "&fYou only have &c%timer_bos% &fseconds to login"
 
 # Send player to a specific server after successful login or register

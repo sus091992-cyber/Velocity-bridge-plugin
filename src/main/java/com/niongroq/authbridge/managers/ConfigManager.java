@@ -35,6 +35,7 @@ public class ConfigManager {
     private boolean raidBarEnabled;
     private int     raidBarTimer;
     private String  raidBarColor;
+    private String  raidBarOverlay;
     private String  raidBarMessage;
 
     private boolean afterLoginSend;
@@ -48,8 +49,6 @@ public class ConfigManager {
         this.customAliases  = new HashMap<>();
         this.blockedServers = new HashSet<>();
     }
-
-    // ── public API ────────────────────────────────────────────────────────────
 
     public void loadConfig() {
         try {
@@ -87,13 +86,14 @@ public class ConfigManager {
     public boolean isHideInTabList()              { return hideInTabList; }
     public boolean isAutoAliasEnabled()           { return autoAliasEnabled; }
 
-    public boolean isRaidBarEnabled()  { return raidBarEnabled; }
-    public int     getRaidBarTimer()   { return raidBarTimer; }
-    public String  getRaidBarColor()   { return raidBarColor; }
-    public String  getRaidBarMessage() { return raidBarMessage; }
+    public boolean isRaidBarEnabled()   { return raidBarEnabled; }
+    public int     getRaidBarTimer()    { return raidBarTimer; }
+    public String  getRaidBarColor()    { return raidBarColor; }
+    public String  getRaidBarOverlay()  { return raidBarOverlay; }
+    public String  getRaidBarMessage()  { return raidBarMessage; }
 
-    public boolean isAfterLoginSend()   { return afterLoginSend; }
-    public String  getAfterLoginServer(){ return afterLoginServer; }
+    public boolean isAfterLoginSend()    { return afterLoginSend; }
+    public String  getAfterLoginServer() { return afterLoginServer; }
 
     public String getMessage(String key) {
         return messages.getOrDefault(key, "&cMessage not found: " + key);
@@ -104,46 +104,38 @@ public class ConfigManager {
     private void parseConfiguration() {
         authServer = config.node("auth-server").getString("auth");
 
-        // blocked-servers
         blockedServers.clear();
         try {
             List<String> rawBlocked = config.node("blocked-servers").getList(String.class);
-            if (rawBlocked != null) {
-                rawBlocked.forEach(s -> blockedServers.add(s.toLowerCase()));
-            }
+            if (rawBlocked != null) rawBlocked.forEach(s -> blockedServers.add(s.toLowerCase()));
         } catch (Exception e) {
             logger.warn("Could not parse blocked-servers list: " + e.getMessage());
         }
 
-        // fake-plugin section
         ConfigurationNode fakeNode = config.node("fake-plugin");
         fakePluginPrefix = fakeNode.node("prefix").getString("&a&lNYX&f&lCORE");
         pluginMessage    = fakeNode.node("message").getString("&7Plugins (&a1&7): %plugin%");
         pluginFooter     = fakeNode.node("footer").getString("");
 
-        // player-hider
         ConfigurationNode hiderNode = config.node("player-hider");
         playerHiderEnabled = hiderNode.node("enabled").getBoolean(true);
         hideInTabList      = hiderNode.node("hide-in-tablist").getBoolean(true);
 
-        // raidbar
         ConfigurationNode rbNode = config.node("raidbar");
         raidBarEnabled = rbNode.node("enabled").getBoolean(true);
         raidBarTimer   = rbNode.node("timer").getInt(60);
-        raidBarColor   = rbNode.node("color").getString("PINK");
+        raidBarColor   = rbNode.node("color").getString("RED");
+        raidBarOverlay = rbNode.node("overlay").getString("NOTCHED_6");
         raidBarMessage = rbNode.node("message").getString("&fYou only have &c%timer_bos% &fseconds to login");
 
-        // after-login
         ConfigurationNode alNode = config.node("after-login");
         afterLoginSend   = alNode.node("send").getBoolean(false);
         afterLoginServer = alNode.node("server").getString("lobby");
 
-        // messages
         messages.clear();
         config.node("messages").childrenMap().forEach((key, node) ->
             messages.put(key.toString(), node.getString("")));
 
-        // custom aliases
         customAliases.clear();
         config.node("custom-aliases").childrenMap().forEach((key, node) -> {
             String k = key.toString();
@@ -151,7 +143,6 @@ public class ConfigManager {
             customAliases.put(k.toLowerCase(), node.getString(""));
         });
 
-        // settings
         autoAliasEnabled = config.node("settings", "auto-alias", "enabled").getBoolean(true);
     }
 
@@ -165,7 +156,7 @@ public class ConfigManager {
             "  - \"admin\"\n" +
             "  - \"maintenance\"\n\n" +
 
-            "# Custom command shortcuts  (alias → target command)\n" +
+            "# Custom command shortcuts\n" +
             "custom-aliases:\n" +
             "  \"/hub\": \"/server lobby\"\n" +
             "  \"/l\": \"/server lobby\"\n\n" +
@@ -182,10 +173,14 @@ public class ConfigManager {
             "  footer: \"\"\n\n" +
 
             "# RaidBar countdown timer shown to players on the auth server\n" +
+            "#\n" +
+            "# color options   : PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE\n" +
+            "# overlay options : PROGRESS, NOTCHED_6, NOTCHED_10, NOTCHED_12, NOTCHED_20\n" +
             "raidbar:\n" +
             "  enabled: true\n" +
             "  timer: 60\n" +
-            "  color: PINK\n" +
+            "  color: RED\n" +
+            "  overlay: NOTCHED_6\n" +
             "  message: \"&fYou only have &c%timer_bos% &fseconds to login\"\n\n" +
 
             "# Send player to a specific server after successful login/register\n" +
