@@ -19,8 +19,10 @@ public class RaidBarManager {
     private final ConfigManager configManager;
     private final Logger logger;
 
-    private final Map<UUID, BossBar>       playerBars  = new ConcurrentHashMap<>();
-    private final Map<UUID, ScheduledTask> playerTasks = new ConcurrentHashMap<>();
+    private final Map<UUID, BossBar>       playerBars    = new ConcurrentHashMap<>();
+    private final Map<UUID, ScheduledTask> playerTasks   = new ConcurrentHashMap<>();
+    /** Pending delayed-start tasks so stopTimer() can cancel them before they fire. */
+    private final Map<UUID, ScheduledTask> pendingStarts = new ConcurrentHashMap<>();
 
     public RaidBarManager(Object plugin, ProxyServer server,
                           ConfigManager configManager, Logger logger) {
@@ -30,61 +32,86 @@ public class RaidBarManager {
         this.logger        = logger;
     }
 
+    /**
+     * Start the countdown for a player.
+     * We delay 600 ms before showing the bar so the player is fully connected
+     * and the backend's initial packet flood has settled.
+     */
     public void startTimer(Player player) {
         if (!configManager.isRaidBarEnabled()) return;
 
+        // Cancel any previous timer or pending start
         stopTimer(player);
 
-        int totalSeconds = configManager.getRaidBarTimer();
-        int[] remaining  = {totalSeconds};
+        int totalSeconds    = configManager.getRaidBarTimer();
+        int[] remaining     = {totalSeconds};
+        UUID uuid           = player.getUniqueId();
 
-        BossBar bar = BossBar.bossBar(
-            buildTitle(remaining[0]),
-            1.0f,
-            resolveColor(configManager.getRaidBarColor()),
-            BossBar.Overlay.PROGRESS
-        );
-
-        player.showBossBar(bar);
-        playerBars.put(player.getUniqueId(), bar);
-
-        ScheduledTask task = server.getScheduler()
+        // Delay the actual bar creation by 600 ms
+        ScheduledTask pending = server.getScheduler()
             .buildTask(plugin, () -> {
-                if (!player.isActive()) {
-                    cleanup(player.getUniqueId());
-                    return;
-                }
+                pendingStarts.remove(uuid);
 
-                remaining[0]--;
+                if (!player.isActive()) return;
 
-                float progress = totalSeconds > 0
-                    ? Math.max(0f, (float) remaining[0] / totalSeconds)
-                    : 0f;
+                BossBar bar = BossBar.bossBar(
+                    buildTitle(remaining[0]),
+                    1.0f,
+                    resolveColor(configManager.getRaidBarColor()),
+                    BossBar.Overlay.PROGRESS
+                );
 
-                bar.progress(progress);
-                bar.name(buildTitle(remaining[0]));
+                player.showBossBar(bar);
+                playerBars.put(uuid, bar);
 
-                if (remaining[0] <= 0) {
-                    cleanup(player.getUniqueId());
-                    String kickMsg = configManager.getMessage("raidbar-timeout");
-                    player.disconnect(MessageUtils.colorize(
-                        kickMsg != null && !kickMsg.isEmpty()
-                            ? kickMsg
-                            : "&cLogin time expired! Please reconnect."));
-                }
+                ScheduledTask tick = server.getScheduler()
+                    .buildTask(plugin, () -> {
+                        if (!player.isActive()) {
+                            cleanup(uuid);
+                            return;
+                        }
+
+                        remaining[0]--;
+
+                        float progress = totalSeconds > 0
+                            ? Math.max(0f, (float) remaining[0] / totalSeconds)
+                            : 0f;
+
+                        bar.progress(progress);
+                        bar.name(buildTitle(remaining[0]));
+
+                        if (remaining[0] <= 0) {
+                            cleanup(uuid);
+                            String kickMsg = configManager.getMessage("raidbar-timeout");
+                            player.disconnect(MessageUtils.colorize(
+                                kickMsg != null && !kickMsg.isEmpty()
+                                    ? kickMsg
+                                    : "&cLogin time expired! Please reconnect."));
+                        }
+                    })
+                    .repeat(1L, TimeUnit.SECONDS)
+                    .schedule();
+
+                playerTasks.put(uuid, tick);
+                logger.debug("RaidBar started for {} ({}s)", player.getUsername(), totalSeconds);
             })
-            .repeat(1L, TimeUnit.SECONDS)
+            .delay(600L, TimeUnit.MILLISECONDS)
             .schedule();
 
-        playerTasks.put(player.getUniqueId(), task);
-        logger.debug("RaidBar timer started for {} ({}s)", player.getUsername(), totalSeconds);
+        pendingStarts.put(uuid, pending);
     }
 
     public void stopTimer(Player player) {
-        BossBar bar = playerBars.remove(player.getUniqueId());
+        UUID uuid = player.getUniqueId();
+
+        // Cancel pending delayed start
+        ScheduledTask pending = pendingStarts.remove(uuid);
+        if (pending != null) pending.cancel();
+
+        BossBar bar = playerBars.remove(uuid);
         if (bar != null) player.hideBossBar(bar);
 
-        ScheduledTask task = playerTasks.remove(player.getUniqueId());
+        ScheduledTask task = playerTasks.remove(uuid);
         if (task != null) task.cancel();
     }
 

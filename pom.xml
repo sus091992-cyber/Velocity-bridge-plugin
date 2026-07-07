@@ -7,7 +7,7 @@
 
     <groupId>com.niongroq</groupId>
     <artifactId>authbridge</artifactId>
-    <version>3.1.0</version>
+    <version>3.2.0</version>
     <packaging>jar</packaging>
 
     <name>AuthBridge</name>
@@ -64,7 +64,7 @@
     </dependencies>
 
     <build>
-        <finalName>AuthBridge-3.1.0</finalName>
+        <finalName>AuthBridge-3.2.0</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -91,7 +91,7 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
-                    <finalName>AuthBridge-3.1.0</finalName>
+                    <finalName>AuthBridge-3.2.0</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
                 <executions>

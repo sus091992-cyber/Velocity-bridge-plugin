@@ -23,7 +23,7 @@ import java.nio.file.Path;
 @Plugin(
     id = "authbridge",
     name = "AuthBridge",
-    version = "3.1.0",
+    version = "3.2.0",
     description = "Professional authentication bridge plugin for Velocity",
     authors = {"S1MPLE"}
 )
@@ -49,18 +49,19 @@ public class AuthBridge {
     public void onProxyInitialize(ProxyInitializeEvent event) {
         try {
             logger.info("╔════════════════════════════════════════════╗");
-            logger.info("║          AuthBridge v3.1.0 Loading         ║");
+            logger.info("║          AuthBridge v3.2.0 Loading         ║");
             logger.info("║              By: S1MPLE                    ║");
             logger.info("╚════════════════════════════════════════════╝");
 
             this.configManager    = new ConfigManager(dataDirectory, logger);
             this.whitelistManager = new WhitelistManager(dataDirectory, logger);
-            this.playerHider      = new PlayerHider(server, configManager, logger);
 
             configManager.loadConfig();
             whitelistManager.loadWhitelist();
             logger.info("✓ Configurations loaded successfully");
 
+            // Pass 'this' so PlayerHider and RaidBarManager can schedule tasks
+            this.playerHider    = new PlayerHider(this, server, configManager, logger);
             this.raidBarManager = new RaidBarManager(this, server, configManager, logger);
 
             registerListeners();
@@ -137,8 +138,6 @@ public class AuthBridge {
 
         logger.info("✓ Auto-alias registration completed");
     }
-
-    // ── accessors ─────────────────────────────────────────────────────────────
 
     public ProxyServer getServer()                { return server; }
     public Logger getLogger()                     { return logger; }
