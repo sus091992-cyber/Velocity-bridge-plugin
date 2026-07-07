@@ -7,6 +7,7 @@ on:
       - 'v*'
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -32,8 +33,8 @@ jobs:
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AuthBridge-3.1.0
-          path: target/AuthBridge-3.1.0.jar
+          name: AuthBridge-jar
+          path: target/AuthBridge-*.jar
           retention-days: 30
 
       - name: Create GitHub Release
@@ -44,13 +45,14 @@ jobs:
           body: |
             ## AuthBridge ${{ github.ref_name }}
 
-            ### تغییرات این نسخه
-            - **BossBar → RaidBar**: نوار بوس‌بار به raid-bar تغییر نام یافت، رنگ پیش‌فرض PINK
-            - **Player Hider واقعی**: پلیرهای روی سرور auth از تب‌لیست همه حذف می‌شن (Velocity TabList API)
-            - **حذف RCON**: بخش RCON و AuthServerGuard کاملاً برداشته شد
+            ### تغییرات این نسخه / Changelog
+            - **PlayerHider fixed**: repeating 1-second enforcement task wins the race against backend tab-list packet flood — auth players are now truly invisible
+            - **RaidBar fixed**: 600ms startup delay ensures the bar appears after full backend connection
+            - **After-login redirect**: send player to a configured server after login/register (`after-login.send` + `after-login.server` in config.yml)
+            - **BossBar → RaidBar** rename, RCON removed
 
-            ### نصب
-            فایل JAR را در پوشه `plugins/` سرور Velocity قرار دهید.
-          files: target/AuthBridge-3.1.0.jar
+            ### نصب / Install
+            Copy `AuthBridge-*.jar` into your Velocity `plugins/` folder and restart.
+          files: target/AuthBridge-*.jar
           draft: false
           prerelease: false
