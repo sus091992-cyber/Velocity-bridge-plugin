@@ -2,167 +2,199 @@
 
 # 🔐 AuthBridge
 
-**A professional authentication bridge plugin for Velocity proxy**
-**پلاگین حرفه‌ای احراز هویت برای پروکسی Velocity**
+**Professional Authentication Bridge Plugin for Velocity Proxy**
 
-![Version](https://img.shields.io/badge/version-3.1.0-blue)
-![Velocity](https://img.shields.io/badge/Velocity-3.x-green)
-![Java](https://img.shields.io/badge/Java-17+-orange)
-![License](https://img.shields.io/badge/license-MIT-purple)
+[![Version](https://img.shields.io/badge/version-3.4.0-blue?style=for-the-badge)](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
+[![Velocity](https://img.shields.io/badge/Velocity-3.5.0-green?style=for-the-badge)](https://papermc.io/software/velocity)
+[![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge)](https://adoptium.net/)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
 </div>
 
 ---
 
 <details open>
-<summary>🇬🇧 English</summary>
+<summary><b>🇬🇧 English Documentation</b></summary>
 
-## 📋 Features
+## Overview
 
-### 🔒 Authentication Gate
-Players are automatically routed to the **auth server** when they first connect. Until they log in via AuthMe (or a compatible plugin), they are completely locked in place — no server switching, no unauthorized commands.
-
-- Tracks authenticated vs. unauthenticated state per player
-- Auth state is cleared on every disconnect so reconnecting players always start fresh
-- Supports external auth confirmation via plugin messaging channel (`authbridge:auth`)
+AuthBridge is a Velocity proxy plugin that enforces authentication before players can access any game server. It intercepts every player connection, holds them in a dedicated auth server, runs a visual countdown timer (RaidBar), hides auth-server players from the tab list, and redirects them to the lobby once authenticated.
 
 ---
 
-### 👻 Player Hider (Tab List)
-Any player on the auth server is **completely invisible** to everyone else — and sees no one themselves.
+## ✨ Features
 
-- Removed from every other player's tab list the moment they join the auth server
-- Their own tab list is fully wiped on join
-- Restored automatically after a successful login and server transfer
-- No player on auth can see any other player, including other players also on auth
-- Configurable via `player-hider.enabled` and `player-hider.hide-in-tablist`
-
-> **In-game (world) visibility:** Velocity is a proxy and cannot send entity packets directly.
-> To hide players in the game world, configure your backend AuthMe plugin to set joining players to **SPECTATOR** mode.
+| Feature | Description |
+|---------|-------------|
+| 🔐 **Authentication Gate** | Players cannot leave the auth server until whitelisted |
+| 👁️ **Player Hider** | Auth-server players are hidden from everyone's tab list |
+| ⏱️ **RaidBar Timer** | Segmented countdown bar (raid-style) with kick on timeout |
+| 🚀 **After-Login Redirect** | Auto-sends players to a target server after login |
+| 🚫 **Blocked Servers** | Certain servers are permanently inaccessible |
+| 🔗 **Custom Aliases** | Map `/hub`, `/l` etc. to `/server lobby` |
+| 🤖 **Auto-Alias** | Automatically registers `/servername` commands from `velocity.toml` |
+| 🛡️ **Command Gate** | Blocks all commands for unauthenticated players |
+| 🎭 **Fake Plugin List** | `/plugins` returns a custom single-plugin response |
+| ⌨️ **Tab-Complete Lock** | Hides command suggestions for unauthenticated players |
+| 📡 **Plugin Channel Guard** | Blocks plugin channel traffic on the auth server |
+| 📢 **`/sayvelo` Broadcast** | Send gradient/color messages to **all players on all servers** |
 
 ---
 
-### ⏱️ RaidBar Countdown Timer
-A **pink raid-style bar** counts down the seconds a player has left to log in.
+## 📢 /sayvelo — Global Broadcast Command
 
-- Shown immediately when a player lands on the auth server
-- Title updates every second with remaining time via `%timer_bos%`
-- Bar shrinks as time runs out
-- Player is kicked with a configurable message when the timer reaches zero
-- Cancelled automatically on successful login
-- Color, duration, and message are fully configurable
+Sends a message to every player connected to the proxy, regardless of which server they are on.
+
+### Permission
+```
+authbridge.sayvelo
+```
+Console always has permission.
+
+### Usage
+
+```
+/sayvelo <message>
+```
+
+### Formats
+
+**Legacy color codes** (`&` codes — any Minecraft color/format):
+
+```
+/sayvelo &c&lSERVER RESTART &r&fin 5 minutes!
+/sayvelo &a&lWelcome &f%player% to the network!
+```
+
+**Gradient text** (custom `GRADINT` tag):
+
+```
+/sayvelo <GRADINT:RED:WHITE:GREEN>ANNOUNCEMENT» Server is back online!
+/sayvelo <GRADINT:GOLD:YELLOW:WHITE>ANNOUNCEMENT» Event starts in 10 minutes!
+/sayvelo <GRADINT:DARK_RED:RED:GOLD>WARNING» Do not spam chat!
+/sayvelo <GRADINT:#FF0000:#FFFFFF:#00FF00>ANNOUNCEMENT» Custom hex colors!
+```
+
+### Available Colors for GRADINT
+
+| Named Color | Named Color |
+|-------------|-------------|
+| `RED` | `DARK_RED` |
+| `GREEN` | `DARK_GREEN` |
+| `BLUE` | `DARK_BLUE` |
+| `AQUA` | `DARK_AQUA` |
+| `YELLOW` | `GOLD` |
+| `WHITE` | `GRAY` |
+| `DARK_GRAY` | `BLACK` |
+| `LIGHT_PURPLE` | `DARK_PURPLE` |
+
+Or use any **hex color**: `#FF5500`, `#00AAFF`, etc.
+
+You can chain **2 or more** colors: `<GRADINT:RED:GOLD:YELLOW:WHITE>`
+
+### Legacy Color & Format Codes (`&` codes)
+
+| Code | Result | Code | Result |
+|------|--------|------|--------|
+| `&0` | Black | `&8` | Dark Gray |
+| `&1` | Dark Blue | `&9` | Blue |
+| `&2` | Dark Green | `&a` | Green |
+| `&3` | Dark Aqua | `&b` | Aqua |
+| `&4` | Dark Red | `&c` | Red |
+| `&5` | Dark Purple | `&d` | Light Purple |
+| `&6` | Gold | `&e` | Yellow |
+| `&7` | Gray | `&f` | White |
+| `&l` | **Bold** | `&o` | *Italic* |
+| `&n` | Underline | `&m` | ~~Strikethrough~~ |
+| `&k` | Obfuscated | `&r` | Reset |
+
+---
+
+## ⏱️ RaidBar — Configuration Guide
+
+The RaidBar is the segmented countdown boss bar shown to players while they are on the auth server.
 
 ```yaml
 raidbar:
   enabled: true
-  timer: 60          # seconds before kick
-  color: PINK        # PINK, RED, BLUE, GREEN, YELLOW, PURPLE, WHITE
+  timer: 60           # seconds before kicking (1–3600)
+  color: RED          # bar color (see table below)
+  overlay: NOTCHED_6  # bar style (see table below)
   message: "&fYou only have &c%timer_bos% &fseconds to login"
 ```
 
+### 🎨 Color Options
+
+| Value | Appearance |
+|-------|-----------|
+| `RED` | 🔴 Red |
+| `GREEN` | 🟢 Green |
+| `BLUE` | 🔵 Blue |
+| `YELLOW` | 🟡 Yellow |
+| `PURPLE` | 🟣 Purple |
+| `PINK` | 🩷 Pink |
+| `WHITE` | ⬜ White |
+
+### 📊 Overlay (Style) Options
+
+| Value | Description | Visual |
+|-------|-------------|--------|
+| `PROGRESS` | Solid bar (no segments) | `────────────────────` |
+| `NOTCHED_6` | 6 segments — **Raid style** ⭐ | `██ ██ ██ ██ ██ ██` |
+| `NOTCHED_10` | 10 segments | `█ █ █ █ █ █ █ █ █ █` |
+| `NOTCHED_12` | 12 segments | `█ █ █ █ █ █ █ █ █ █ █ █` |
+| `NOTCHED_20` | 20 segments | `▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌` |
+
+> **Recommended**: `color: RED` + `overlay: NOTCHED_6` replicates the exact look of Minecraft's native raid boss bar.
+
+The `%timer_bos%` placeholder in `message` is replaced with the remaining seconds.
+
 ---
 
-### 🚫 Blocked Servers
-Certain servers can be made completely inaccessible to all players.
-
-- Configured in the `blocked-servers` list
-- Connection is denied **before** it is established (pre-connect event)
-- Players receive a configurable `server-blocked` message
-
----
-
-### 🔗 Custom Command Aliases
-Define shortcut commands that redirect to other commands.
+## ⚙️ Full config.yml
 
 ```yaml
-custom-aliases:
-  "/hub": "/server lobby"
-  "/l":   "/server lobby"
-  "/spawn": "/server lobby"
-```
-
----
-
-### 🤖 Auto-Alias Registration
-Automatically registers a `/servername` command for every server defined in `velocity.toml`.
-
-- Skips the auth server and any blocked servers
-- Can be disabled with `settings.auto-alias.enabled: false`
-
----
-
-### 🛡️ Command Gating
-Unauthenticated players on the auth server are restricted to a whitelist of allowed commands.
-
-- Globally blocked commands (`/plugins`, `/pl`, `/version`, `/ver`, `/about`) are hidden from **all** players
-- Unauthenticated players can only run commands listed in `whitelist.yml`
-- Authenticated players on the auth server cannot use server-switching commands
-
----
-
-### 🎭 Fake Plugin List
-Responds to `/plugins`, `/pl`, `/version`, or `/about` with a **fake plugin list** instead of revealing the real server stack.
-
-```yaml
-fake-plugin:
-  prefix: "&a&lNYX&f&lCORE"
-  message: "&7Plugins (&a1&7): %plugin%"
-  footer: ""
-```
-
----
-
-### 🔏 Tab-Complete Lockdown
-Tab-complete suggestions are sanitized for all players at `PostOrder.LAST` priority.
-
-- **Unauthenticated players:** suggestions are replaced with only the allowed commands from the whitelist
-- **All players:** namespaced suggestions (e.g. `authbridge:reload`) are stripped
-- **All players:** globally blocked commands are removed from suggestions
-
----
-
-### 📡 Plugin Channel Guard
-Intercepts outgoing plugin channel messages from backend servers.
-
-- `minecraft:brand` → spoofed to `"Minecraft"`
-- `minecraft:register` → plugin namespaces stripped from payload
-
----
-
-## ⚙️ Configuration
-
-```yaml
+# Name of your auth server (must match velocity.toml)
 auth-server: "auth"
 
+# Servers permanently inaccessible to all players
 blocked-servers:
   - "admin"
   - "maintenance"
 
-auth-required-servers:
-  - "lobby"
-  - "survival"
-  - "creative"
-
+# Custom command shortcuts
 custom-aliases:
   "/hub": "/server lobby"
   "/l": "/server lobby"
   "/spawn": "/server lobby"
 
+# Hide auth-server players from tab list
 player-hider:
   enabled: true
   hide-in-tablist: true
 
+# Fake /plugins output
 fake-plugin:
   prefix: "&a&lNYX&f&lCORE"
   message: "&7Plugins (&a1&7): %plugin%"
   footer: ""
 
+# RaidBar countdown timer
+# color   : PINK | BLUE | RED | GREEN | YELLOW | PURPLE | WHITE
+# overlay : PROGRESS | NOTCHED_6 | NOTCHED_10 | NOTCHED_12 | NOTCHED_20
 raidbar:
   enabled: true
   timer: 60
-  color: PINK
+  color: RED
+  overlay: NOTCHED_6
   message: "&fYou only have &c%timer_bos% &fseconds to login"
 
+# Redirect players after successful login/register
+after-login:
+  send: true
+  server: "lobby"
+
+# Player-facing messages
 messages:
   not-logged-in: "&cYou must login first!"
   command-blocked: "&cThis command is blocked!"
@@ -174,247 +206,247 @@ settings:
     enabled: true
 ```
 
-## 📁 whitelist.yml
+---
+
+## 📋 whitelist.yml
+
+Authenticated players are stored here automatically by your auth plugin. Each entry is a UUID:username pair.
 
 ```yaml
-allowed-commands:
-  - "login"
-  - "l"
-  - "register"
-  - "reg"
-
-always-allowed:
-  - "login"
-  - "register"
-
-globally-blocked:
-  - "plugins"
-  - "pl"
-  - "version"
-  - "ver"
-  - "about"
+players:
+  - uuid: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    username: "Steve"
 ```
 
-## 🚀 Installation
+---
 
-1. Build: `mvn clean package`
-2. Copy `target/AuthBridge-3.1.0.jar` into Velocity `plugins/`
-3. Start Velocity once to generate config files
-4. Edit `config.yml` and `whitelist.yml` to match your setup
-5. Restart Velocity
+## 📦 Installation
 
-## 🔌 Compatibility
+1. Download `AuthBridge-3.4.0.jar` from [Releases](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
+2. Place it in your Velocity `plugins/` folder
+3. Start your proxy once to generate `plugins/AuthBridge/config.yml`
+4. Edit `config.yml` — set `auth-server` to match your `velocity.toml` server name
+5. Restart the proxy
 
-| Software | Version |
-|----------|---------|
-| Velocity | 3.x |
-| Java | 17+ |
-| AuthMe (backend) | Any version with plugin messaging |
+---
 
-## 👤 Author
-**S1MPLE** — AuthBridge v3.1.0
+## 🔧 Commands
+
+| Command | Permission | Description |
+|---------|-----------|-------------|
+| `/server <name>` | — | Connect to a server (gated by whitelist) |
+| `/sayvelo <msg>` | `authbridge.sayvelo` | Broadcast to all players on all servers |
+
+---
+
+## 🧩 Compatibility
+
+- **Velocity**: 3.3.0+ (API 3)
+- **Java**: 21+
+- **Auth plugins**: AuthMe Velocity, nLogin, JPremium, etc.
 
 </details>
 
 ---
 
 <details>
-<summary>🇮🇷 فارسی</summary>
+<summary><b>🇮🇷 مستندات فارسی</b></summary>
+
+## درباره پلاگین
+
+AuthBridge یک پلاگین پروکسی Velocity است که قبل از ورود بازیکنان به هر سروری، احراز هویت را اجباری می‌کند. این پلاگین هر اتصال بازیکن را رهگیری کرده، او را در سرور Auth نگه می‌دارد، یک تایمر شمارش معکوس بصری (RaidBar) اجرا می‌کند، بازیکنان سرور Auth را از لیست Tab مخفی می‌کند و پس از احراز هویت، آن‌ها را به لابی هدایت می‌کند.
+
+---
 
 ## ✨ قابلیت‌ها
 
-### 🔒 دروازه احراز هویت
-پلیرها به محض اتصال به پروکسی، به طور خودکار وارد **سرور auth** می‌شوند. تا زمانی که از طریق AuthMe (یا پلاگین سازگار دیگری) لاگین نکنند، کاملاً محدود هستند — هیچ جابه‌جایی سرور و هیچ دستور غیرمجازی امکان‌پذیر نیست.
-
-- وضعیت احراز هویت هر پلیر به صورت جداگانه ردیابی می‌شود
-- با هر disconnect، وضعیت پاک می‌شود — پلیر مجبور است دوباره لاگین کند
-- پشتیبانی از تأیید خارجی احراز هویت از طریق plugin messaging (`authbridge:auth`)
-
----
-
-### 👻 مخفی‌سازی پلیر (تب‌لیست)
-هر پلیری که وارد سرور auth شود **کاملاً از دید همه پنهان می‌شود** — و خودش هم هیچ‌کس را نمی‌بیند.
-
-- به محض ورود به auth، از تب‌لیست تمام پلیرهای دیگر حذف می‌شود
-- تب‌لیست خود پلیر نیز کاملاً پاک می‌شود
-- بعد از لاگین موفق و انتقال به سرور دیگر، به صورت خودکار بازمی‌گردد
-- هیچ پلیری در auth نمی‌تواند پلیر دیگری را ببیند، حتی پلیرهای دیگری که در auth هستند
-- قابل تنظیم از طریق `player-hider.enabled` و `player-hider.hide-in-tablist`
-
-> **مخفی‌سازی در دنیای بازی:** Velocity یک پروکسی است و نمی‌تواند مستقیماً packet موجودیت ارسال کند.
-> برای مخفی‌کردن پلیرها در دنیا، پلاگین AuthMe در بک‌اند را طوری تنظیم کنید که پلیرهای وارد شده را روی حالت **SPECTATOR** بگذارد.
+| قابلیت | توضیح |
+|--------|--------|
+| 🔐 **دروازه احراز هویت** | بازیکنان تا زمان وایت‌لیست شدن نمی‌توانند از سرور Auth خارج شوند |
+| 👁️ **مخفی‌کردن بازیکنان** | بازیکنان سرور Auth از لیست Tab همه مخفی می‌شوند |
+| ⏱️ **تایمر RaidBar** | نوار شمارش معکوس تقسیم‌بندی‌شده با اخراج در صورت اتمام وقت |
+| 🚀 **ریدایرکت پس از لاگین** | بازیکن پس از لاگین به‌صورت خودکار به سرور مشخص فرستاده می‌شود |
+| 🚫 **سرورهای مسدود** | برخی سرورها برای همیشه غیرقابل دسترس هستند |
+| 🔗 **Alias سفارشی** | نگاشت `/hub`، `/l` و غیره به `/server lobby` |
+| 🤖 **Auto-Alias** | ثبت خودکار دستورات `/servername` از `velocity.toml` |
+| 🛡️ **فیلتر دستورات** | بلاک کردن تمام دستورات برای بازیکنان احراز هویت‌نشده |
+| 🎭 **لیست پلاگین جعلی** | `/plugins` پاسخ سفارشی تک‌پلاگین برمی‌گرداند |
+| ⌨️ **قفل Tab-Complete** | مخفی‌کردن پیشنهادات دستور برای بازیکنان احراز هویت‌نشده |
+| 📡 **محافظ کانال پلاگین** | بلاک کردن ترافیک کانال‌های پلاگین در سرور Auth |
+| 📢 **دستور `/sayvelo`** | ارسال پیام گرادیانت/رنگی به **تمام بازیکنان در همه سرورها** |
 
 ---
 
-### ⏱️ تایمر RaidBar (نوار رید)
-یک **نوار رید صورتی** ثانیه‌شماری می‌کند تا پلیر چقدر وقت برای لاگین دارد.
+## 📢 دستور /sayvelo — پخش سراسری
 
-- بلافاصله پس از ورود به سرور auth نمایش داده می‌شود
-- هر ثانیه عنوان با زمان باقی‌مانده بروز می‌شود (`%timer_bos%`)
-- نوار با گذشت زمان کوچک می‌شود
-- وقتی تایمر به صفر رسید، پلیر با پیام قابل تنظیم کیک می‌شود
-- با لاگین موفق خودکار متوقف می‌شود
+این پیام را به تمام بازیکنان متصل به پروکسی، صرف نظر از اینکه در کدام سرور هستند، ارسال می‌کند.
+
+### مجوز
+```
+authbridge.sayvelo
+```
+کنسول همیشه مجوز دارد.
+
+### فرمت‌های دستور
+
+**کدهای رنگ قدیمی** (کدهای `&`):
+
+```
+/sayvelo &c&lاعلان مهم &r&fمتن پیام
+/sayvelo &a&lخوش آمدید &fبه سرور!
+```
+
+**متن گرادیانت** (تگ سفارشی `GRADINT`):
+
+```
+/sayvelo <GRADINT:RED:WHITE:GREEN>ANNOUNCEMENT» سرور آنلاین شد!
+/sayvelo <GRADINT:GOLD:YELLOW:WHITE>ANNOUNCEMENT» رویداد ۱۰ دقیقه دیگر شروع می‌شود!
+/sayvelo <GRADINT:DARK_RED:RED:GOLD>WARNING» اسپم نکنید!
+/sayvelo <GRADINT:#FF0000:#FFFFFF:#00FF00>ANNOUNCEMENT» رنگ‌های هگزادسیمال!
+```
+
+### رنگ‌های موجود برای GRADINT
+
+| رنگ | رنگ |
+|-----|-----|
+| `RED` — قرمز | `DARK_RED` — قرمز تیره |
+| `GREEN` — سبز | `DARK_GREEN` — سبز تیره |
+| `BLUE` — آبی | `DARK_BLUE` — آبی تیره |
+| `AQUA` — فیروزه‌ای | `DARK_AQUA` — فیروزه تیره |
+| `YELLOW` — زرد | `GOLD` — طلایی |
+| `WHITE` — سفید | `GRAY` — خاکستری |
+| `DARK_GRAY` — خاکستری تیره | `BLACK` — مشکی |
+| `LIGHT_PURPLE` — بنفش روشن | `DARK_PURPLE` — بنفش تیره |
+
+یا هر **رنگ هگز**: `#FF5500`، `#00AAFF` و غیره.
+می‌توانید **۲ یا بیشتر** رنگ زنجیر کنید: `<GRADINT:RED:GOLD:YELLOW:WHITE>`
+
+---
+
+## ⏱️ راهنمای تنظیمات RaidBar
 
 ```yaml
 raidbar:
   enabled: true
-  timer: 60          # ثانیه تا کیک
-  color: PINK        # PINK، RED، BLUE، GREEN، YELLOW، PURPLE، WHITE
-  message: "&fYou only have &c%timer_bos% &fseconds to login"
+  timer: 60           # ثانیه‌های قبل از اخراج (۱–۳۶۰۰)
+  color: RED          # رنگ نوار (جدول زیر)
+  overlay: NOTCHED_6  # سبک نوار (جدول زیر)
+  message: "&fفقط &c%timer_bos% &fثانیه برای لاگین داری"
 ```
 
+### 🎨 رنگ‌های نوار
+
+| مقدار | رنگ |
+|-------|-----|
+| `RED` | 🔴 قرمز |
+| `GREEN` | 🟢 سبز |
+| `BLUE` | 🔵 آبی |
+| `YELLOW` | 🟡 زرد |
+| `PURPLE` | 🟣 بنفش |
+| `PINK` | 🩷 صورتی |
+| `WHITE` | ⬜ سفید |
+
+### 📊 سبک نوار (Overlay)
+
+| مقدار | توضیح | ظاهر |
+|-------|--------|------|
+| `PROGRESS` | نوار یکپارچه (بدون تقسیم) | `────────────────────` |
+| `NOTCHED_6` | ۶ بخش — **سبک Raid اصلی** ⭐ | `██ ██ ██ ██ ██ ██` |
+| `NOTCHED_10` | ۱۰ بخش | `█ █ █ █ █ █ █ █ █ █` |
+| `NOTCHED_12` | ۱۲ بخش | `█ █ █ █ █ █ █ █ █ █ █ █` |
+| `NOTCHED_20` | ۲۰ بخش | `▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌` |
+
+> **پیشنهاد**: `color: RED` + `overlay: NOTCHED_6` دقیقاً ظاهر نوار Raid اصلی Minecraft را شبیه‌سازی می‌کند.
+
+متغیر `%timer_bos%` در پیام با ثانیه‌های باقیمانده جایگزین می‌شود.
+
 ---
 
-### 🚫 سرورهای مسدود
-برخی سرورها می‌توانند برای همه پلیرها کاملاً غیرقابل دسترس باشند.
-
-- در لیست `blocked-servers` تنظیم می‌شود
-- اتصال **قبل از برقراری** رد می‌شود (pre-connect event)
-- پلیر پیام قابل تنظیم `server-blocked` دریافت می‌کند
-
----
-
-### 🔗 دستورات میانبر سفارشی
-دستورات کوتاه‌نویسی تعریف کنید که به دستورات دیگر هدایت می‌شوند.
+## ⚙️ فایل config.yml کامل
 
 ```yaml
-custom-aliases:
-  "/hub": "/server lobby"
-  "/l": "/server lobby"
-  "/spawn": "/server lobby"
-```
-
----
-
-### 🤖 ثبت خودکار Alias
-به طور خودکار دستور `/servername` برای هر سروری که در `velocity.toml` تعریف شده ثبت می‌کند.
-
-- سرور auth و سرورهای مسدود را رد می‌کند
-- با `settings.auto-alias.enabled: false` قابل غیرفعال‌کردن است
-
----
-
-### 🛡️ محدودیت دستورات
-پلیرهای لاگین‌نشده در سرور auth فقط به لیست سفید دستورات دسترسی دارند.
-
-- دستورات بلاک شده جهانی (`/plugins`، `/pl`، `/version`، `/ver`، `/about`) از **همه** پنهان است
-- پلیرهای لاگین‌نشده فقط دستورات موجود در `whitelist.yml` را می‌توانند اجرا کنند
-- پلیرهای احراز هویت شده در auth نمی‌توانند دستورات جابه‌جایی سرور را اجرا کنند
-
----
-
-### 🎭 لیست پلاگین جعلی
-وقتی پلیری `/plugins`، `/pl`، `/version` یا `/about` را اجرا می‌کند، به جای افشای استک واقعی سرور، **لیست پلاگین جعلی** ارسال می‌شود.
-
-```yaml
-fake-plugin:
-  prefix: "&a&lNYX&f&lCORE"
-  message: "&7Plugins (&a1&7): %plugin%"
-  footer: ""
-```
-
----
-
-### 🔏 قفل Tab-Complete
-پیشنهادات tab-complete برای همه پلیرها با اولویت `PostOrder.LAST` پاکسازی می‌شود.
-
-- **پلیرهای لاگین‌نشده:** فقط دستورات مجاز از whitelist پیشنهاد می‌شود
-- **همه پلیرها:** پیشنهادات namespace‌دار (مثلاً `authbridge:reload`) همیشه حذف می‌شوند
-- **همه پلیرها:** دستورات بلاک شده جهانی از پیشنهادات حذف می‌شوند
-
----
-
-### 📡 محافظ کانال پلاگین
-پیام‌های کانال پلاگین ارسال شده از سرورهای بک‌اند را رهگیری می‌کند.
-
-- `minecraft:brand` ← جعل می‌شود به `"Minecraft"`
-- `minecraft:register` ← namespace های پلاگین از payload حذف می‌شوند
-
----
-
-## ⚙️ تنظیمات
-
-```yaml
+# نام سرور Auth (باید با velocity.toml یکسان باشد)
 auth-server: "auth"
 
+# سرورهایی که برای همیشه غیرقابل دسترس هستند
 blocked-servers:
   - "admin"
   - "maintenance"
 
-auth-required-servers:
-  - "lobby"
-  - "survival"
-  - "creative"
-
+# میانبرهای دستور سفارشی
 custom-aliases:
   "/hub": "/server lobby"
   "/l": "/server lobby"
-  "/spawn": "/server lobby"
 
+# مخفی کردن بازیکنان سرور Auth از لیست Tab
 player-hider:
   enabled: true
   hide-in-tablist: true
 
+# خروجی جعلی /plugins
 fake-plugin:
   prefix: "&a&lNYX&f&lCORE"
   message: "&7Plugins (&a1&7): %plugin%"
   footer: ""
 
+# تایمر شمارش معکوس RaidBar
+# color   : PINK | BLUE | RED | GREEN | YELLOW | PURPLE | WHITE
+# overlay : PROGRESS | NOTCHED_6 | NOTCHED_10 | NOTCHED_12 | NOTCHED_20
 raidbar:
   enabled: true
   timer: 60
-  color: PINK
-  message: "&fYou only have &c%timer_bos% &fseconds to login"
+  color: RED
+  overlay: NOTCHED_6
+  message: "&fفقط &c%timer_bos% &fثانیه برای لاگین داری"
 
+# ریدایرکت بازیکنان پس از لاگین
+after-login:
+  send: true
+  server: "lobby"
+
+# پیام‌های نمایشی
 messages:
-  not-logged-in: "&cYou must login first!"
-  command-blocked: "&cThis command is blocked!"
-  server-blocked: "&cYou cannot connect to that server!"
-  raidbar-timeout: "&cLogin time expired! Please reconnect."
+  not-logged-in: "&cابتدا باید لاگین کنی!"
+  command-blocked: "&cاین دستور مسدود است!"
+  server-blocked: "&cنمی‌توانی به آن سرور متصل شوی!"
+  raidbar-timeout: "&cزمان لاگین به اتمام رسید! دوباره متصل شو."
 
 settings:
   auto-alias:
     enabled: true
 ```
 
-## 📁 whitelist.yml
+---
 
-```yaml
-allowed-commands:
-  - "login"
-  - "l"
-  - "register"
-  - "reg"
+## 📦 نصب
 
-always-allowed:
-  - "login"
-  - "register"
+1. دانلود `AuthBridge-3.4.0.jar` از [Releases](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
+2. فایل را در پوشه `plugins/` پروکسی Velocity قرار دهید
+3. پروکسی را یک‌بار راه‌اندازی کنید تا `plugins/AuthBridge/config.yml` ساخته شود
+4. `config.yml` را ویرایش کنید — مقدار `auth-server` باید با نام سرور در `velocity.toml` یکسان باشد
+5. پروکسی را ریستارت کنید
 
-globally-blocked:
-  - "plugins"
-  - "pl"
-  - "version"
-  - "ver"
-  - "about"
-```
+---
 
-## 🚀 نصب
+## 🔧 دستورات
 
-1. پلاگین را بیلد کنید: `mvn clean package`
-2. فایل `target/AuthBridge-3.1.0.jar` را در پوشه `plugins/` سرور Velocity کپی کنید
-3. یک بار Velocity را راه‌اندازی کنید تا فایل‌های تنظیمات ساخته شوند
-4. `config.yml` و `whitelist.yml` را مطابق سرور خود ویرایش کنید
-5. Velocity را ری‌استارت کنید
+| دستور | مجوز | توضیح |
+|-------|------|--------|
+| `/server <name>` | — | اتصال به سرور (کنترل شده توسط وایت‌لیست) |
+| `/sayvelo <msg>` | `authbridge.sayvelo` | پخش پیام به همه بازیکنان در همه سرورها |
 
-## 🔌 سازگاری
+---
 
-| نرم‌افزار | نسخه |
-|----------|------|
-| Velocity | 3.x |
-| Java | 17+ |
-| AuthMe (بک‌اند) | هر نسخه با پشتیبانی plugin messaging |
+## 🧩 سازگاری
 
-## 👤 سازنده
-**S1MPLE** — AuthBridge v3.1.0
+- **Velocity**: نسخه ۳.۳.۰ به بالا (API نسخه ۳)
+- **Java**: نسخه ۲۱ به بالا
+- **پلاگین‌های Auth**: AuthMe Velocity، nLogin، JPremium و غیره
 
 </details>
+
+---
+
+<div align="center">
+Made with ❤️ by <b>S1MPLE</b>
+</div>

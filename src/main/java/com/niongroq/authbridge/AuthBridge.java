@@ -15,6 +15,7 @@ import com.niongroq.authbridge.managers.WhitelistManager;
 import com.niongroq.authbridge.managers.PlayerHider;
 import com.niongroq.authbridge.commands.ServerCommand;
 import com.niongroq.authbridge.commands.AliasCommand;
+import com.niongroq.authbridge.commands.SayVeloCommand;
 import org.slf4j.Logger;
 
 import jakarta.inject.Inject;
@@ -23,7 +24,7 @@ import java.nio.file.Path;
 @Plugin(
     id = "authbridge",
     name = "AuthBridge",
-    version = "3.2.0",
+    version = "3.4.0",
     description = "Professional authentication bridge plugin for Velocity",
     authors = {"S1MPLE"}
 )
@@ -49,7 +50,7 @@ public class AuthBridge {
     public void onProxyInitialize(ProxyInitializeEvent event) {
         try {
             logger.info("╔════════════════════════════════════════════╗");
-            logger.info("║          AuthBridge v3.2.0 Loading         ║");
+            logger.info("║          AuthBridge v3.4.0 Loading         ║");
             logger.info("║              By: S1MPLE                    ║");
             logger.info("╚════════════════════════════════════════════╝");
 
@@ -60,7 +61,6 @@ public class AuthBridge {
             whitelistManager.loadWhitelist();
             logger.info("✓ Configurations loaded successfully");
 
-            // Pass 'this' so PlayerHider and RaidBarManager can schedule tasks
             this.playerHider    = new PlayerHider(this, server, configManager, logger);
             this.raidBarManager = new RaidBarManager(this, server, configManager, logger);
 
@@ -86,7 +86,7 @@ public class AuthBridge {
 
         FakePluginListener fakePluginListener = new FakePluginListener(configManager, logger);
         PluginChannelListener channelListener = new PluginChannelListener(logger);
-        TabCompleteListener tabListener = new TabCompleteListener(
+        TabCompleteListener tabListener       = new TabCompleteListener(
             authListener, whitelistManager, logger);
 
         server.getEventManager().register(this, authListener);
@@ -101,6 +101,11 @@ public class AuthBridge {
         server.getCommandManager().register(
             "server",
             new ServerCommand(server, configManager, whitelistManager, logger));
+
+        server.getCommandManager().register(
+            "sayvelo",
+            new SayVeloCommand(server, logger));
+        logger.info("✓ Command /sayvelo registered");
 
         AliasCommand aliasCmd = new AliasCommand(server, configManager, logger);
         configManager.getCustomAliases().forEach((alias, target) -> {
@@ -121,7 +126,6 @@ public class AuthBridge {
 
         server.getAllServers().forEach(reg -> {
             String name = reg.getServerInfo().getName();
-
             if (name.equalsIgnoreCase(authServer)) {
                 logger.info("⊘ Skipping auth server: " + name);
                 return;
@@ -130,7 +134,6 @@ public class AuthBridge {
                 logger.info("⊘ Skipping blocked server: " + name);
                 return;
             }
-
             AliasCommand autoAlias = new AliasCommand(server, configManager, logger);
             server.getCommandManager().register(name.toLowerCase(), autoAlias);
             logger.info("✓ Auto-alias: /" + name.toLowerCase() + " → /server " + name);
