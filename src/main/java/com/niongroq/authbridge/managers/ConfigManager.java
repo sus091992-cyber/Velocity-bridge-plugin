@@ -37,6 +37,9 @@ public class ConfigManager {
     private String  raidBarColor;
     private String  raidBarMessage;
 
+    private boolean afterLoginSend;
+    private String  afterLoginServer;
+
     public ConfigManager(Path dataDirectory, Logger logger) {
         this.dataDirectory  = dataDirectory;
         this.logger         = logger;
@@ -89,6 +92,9 @@ public class ConfigManager {
     public String  getRaidBarColor()   { return raidBarColor; }
     public String  getRaidBarMessage() { return raidBarMessage; }
 
+    public boolean isAfterLoginSend()   { return afterLoginSend; }
+    public String  getAfterLoginServer(){ return afterLoginServer; }
+
     public String getMessage(String key) {
         return messages.getOrDefault(key, "&cMessage not found: " + key);
     }
@@ -126,6 +132,11 @@ public class ConfigManager {
         raidBarTimer   = rbNode.node("timer").getInt(60);
         raidBarColor   = rbNode.node("color").getString("PINK");
         raidBarMessage = rbNode.node("message").getString("&fYou only have &c%timer_bos% &fseconds to login");
+
+        // after-login
+        ConfigurationNode alNode = config.node("after-login");
+        afterLoginSend   = alNode.node("send").getBoolean(false);
+        afterLoginServer = alNode.node("server").getString("lobby");
 
         // messages
         messages.clear();
@@ -176,6 +187,11 @@ public class ConfigManager {
             "  timer: 60\n" +
             "  color: PINK\n" +
             "  message: \"&fYou only have &c%timer_bos% &fseconds to login\"\n\n" +
+
+            "# Send player to a specific server after successful login/register\n" +
+            "after-login:\n" +
+            "  send: true\n" +
+            "  server: \"lobby\"\n\n" +
 
             "# Player-facing messages\n" +
             "messages:\n" +

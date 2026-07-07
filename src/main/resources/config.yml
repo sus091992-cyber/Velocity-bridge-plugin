@@ -1,5 +1,7 @@
+# Name of your authentication server (must match velocity.toml)
 auth-server: "auth"
 
+# Servers completely inaccessible to players
 blocked-servers:
   - "admin"
   - "maintenance"
@@ -9,17 +11,19 @@ auth-required-servers:
   - "survival"
   - "creative"
 
+# Custom command shortcuts  (alias → target command)
 custom-aliases:
   "/hub": "/server lobby"
   "/l": "/server lobby"
   "/spawn": "/server lobby"
 
-# Hide players on the auth server from everyone (tab list + world)
+# Hide players on the auth server from everyone (tab list)
 # No player on auth can see any other player — not even other auth players.
 player-hider:
   enabled: true
   hide-in-tablist: true
 
+# Fake /plugins response
 fake-plugin:
   prefix: "&a&lNYX&f&lCORE"
   message: "&7Plugins (&a1&7): %plugin%"
@@ -32,6 +36,12 @@ raidbar:
   color: PINK
   message: "&fYou only have &c%timer_bos% &fseconds to login"
 
+# Send player to a specific server after successful login or register
+after-login:
+  send: true
+  server: "lobby"
+
+# Player-facing messages
 messages:
   not-logged-in: "&cYou must login first!"
   command-blocked: "&cThis command is blocked!"
@@ -39,8 +49,5 @@ messages:
   raidbar-timeout: "&cLogin time expired! Please reconnect."
 
 settings:
-  enabled: true
-  debug: false
-  login-cache-duration: 3600
   auto-alias:
     enabled: true

@@ -31,18 +31,8 @@ public class AuthListener {
     private final RaidBarManager raidBarManager;
     private final Logger logger;
 
-    /**
-     * Players whose authentication state has been confirmed.
-     * Cleared on every disconnect so a reconnecting player always starts fresh.
-     */
     private final Set<UUID> authenticatedPlayers = ConcurrentHashMap.newKeySet();
-
-    /**
-     * Players currently sitting on the auth server (unauthenticated).
-     * A transition from this set → another server is the signal that AuthMe
-     * has redirected them after a successful login/register.
-     */
-    private final Set<UUID> playersOnAuthServer = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> playersOnAuthServer   = ConcurrentHashMap.newKeySet();
 
     public AuthListener(ProxyServer server, ConfigManager configManager,
                         WhitelistManager whitelistManager, PlayerHider playerHider,
@@ -55,20 +45,32 @@ public class AuthListener {
         this.logger           = logger;
     }
 
-    // ── public API used by TabCompleteListener ────────────────────────────────
+    // ── public API ────────────────────────────────────────────────────────────
 
-    /** Returns true if the given player UUID is currently authenticated. */
     public boolean isAuthenticated(UUID uuid) {
         return authenticatedPlayers.contains(uuid);
     }
 
     /**
-     * Externally mark a player as authenticated (e.g. via plugin messaging from
-     * the backend AuthMe server).
+     * Called via plugin messaging (authbridge:auth channel) when the backend
+     * AuthMe confirms a login or register. Marks the player authenticated and,
+     * if after-login.send is enabled, transfers them to the configured server.
      */
     public void markAuthenticated(UUID playerUuid, String playerName) {
         authenticatedPlayers.add(playerUuid);
+        playersOnAuthServer.remove(playerUuid);
         logger.debug("Player marked authenticated externally: " + playerName);
+
+        if (configManager.isAfterLoginSend()) {
+            String target = configManager.getAfterLoginServer();
+            server.getPlayer(playerUuid).ifPresent(player ->
+                server.getServer(target).ifPresent(dest -> {
+                    raidBarManager.stopTimer(player);
+                    player.createConnectionRequest(dest).fireAndForget();
+                    logger.debug("After-login redirect → " + target + " for " + playerName);
+                })
+            );
+        }
     }
 
     // ── lifecycle events ──────────────────────────────────────────────────────
@@ -92,9 +94,6 @@ public class AuthListener {
 
     // ── server connection events ──────────────────────────────────────────────
 
-    /**
-     * PRE-connect: block access to servers that are in the blocked-servers list.
-     */
     @Subscribe(order = PostOrder.EARLY)
     public void onServerPreConnect(ServerPreConnectEvent event) {
         String target = event.getOriginalServer().getServerInfo().getName();
@@ -109,28 +108,39 @@ public class AuthListener {
         }
     }
 
-    /**
-     * POST-connect: track auth-server presence and update player visibility.
-     */
     @Subscribe
     public void onServerConnected(ServerConnectedEvent event) {
         Player player = event.getPlayer();
-        UUID uuid = player.getUniqueId();
+        UUID   uuid   = player.getUniqueId();
         String current = event.getServer().getServerInfo().getName();
         String authSrv = configManager.getAuthServer();
 
         if (current.equalsIgnoreCase(authSrv)) {
+            // Player arrived on auth server
             playersOnAuthServer.add(uuid);
             playerHider.hidePlayer(player);
             raidBarManager.startTimer(player);
+
         } else {
             if (playersOnAuthServer.contains(uuid)) {
-                // Legitimate AuthMe post-login redirect: auth server → other server
+                // Player transitioned auth → another server (AuthMe-driven redirect)
                 authenticatedPlayers.add(uuid);
                 playersOnAuthServer.remove(uuid);
                 raidBarManager.stopTimer(player);
                 logger.debug("Auth state granted (auth-server transition): "
                         + player.getUsername());
+
+                // If after-login.send is on and they landed on the wrong server, redirect
+                if (configManager.isAfterLoginSend()) {
+                    String target = configManager.getAfterLoginServer();
+                    if (!current.equalsIgnoreCase(target)) {
+                        server.getServer(target).ifPresent(dest ->
+                            player.createConnectionRequest(dest).fireAndForget()
+                        );
+                        logger.debug("After-login redirect → " + target
+                                + " for " + player.getUsername());
+                    }
+                }
             }
             playerHider.showPlayer(player);
         }
@@ -141,14 +151,12 @@ public class AuthListener {
     @Subscribe
     public void onCommandExecute(CommandExecuteEvent event) {
         if (!(event.getCommandSource() instanceof Player)) return;
-
         if (!event.getResult().isAllowed()) return;
 
-        Player player = (Player) event.getCommandSource();
-        String rawCommand = event.getCommand().toLowerCase();
+        Player player      = (Player) event.getCommandSource();
+        String rawCommand  = event.getCommand().toLowerCase();
         String commandName = extractCommandName(rawCommand);
 
-        // Globally blocked (plugins, ver, about …) — blocked for everyone
         if (whitelistManager.isGloballyBlockedCommand(commandName)) {
             event.setResult(CommandExecuteEvent.CommandResult.denied());
             return;
@@ -165,7 +173,6 @@ public class AuthListener {
             return;
         }
 
-        // Authenticated players on the auth server cannot switch servers via commands
         String currentServer = getCurrentServerName(player);
         if (currentServer.equalsIgnoreCase(configManager.getAuthServer())) {
             if (whitelistManager.isServerSwitchingCommand(commandName)) {
