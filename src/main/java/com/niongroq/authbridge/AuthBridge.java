@@ -5,6 +5,8 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
+import com.niongroq.authbridge.listeners.AuthChannelListener;
 import com.niongroq.authbridge.listeners.AuthListener;
 import com.niongroq.authbridge.listeners.FakePluginListener;
 import com.niongroq.authbridge.listeners.PluginChannelListener;
@@ -89,12 +91,21 @@ public class AuthBridge {
         TabCompleteListener tabListener       = new TabCompleteListener(
             authListener, whitelistManager, logger);
 
+        // Register the proxy<->backend auth channel BEFORE subscribing to
+        // PluginMessageEvent for it, otherwise Velocity treats it as an
+        // unregistered channel and forwards it straight to the client
+        // instead of delivering it to our listener.
+        server.getChannelRegistrar().register(
+            MinecraftChannelIdentifier.from(AuthChannelListener.CHANNEL));
+        AuthChannelListener authChannelListener = new AuthChannelListener(authListener, logger);
+
         server.getEventManager().register(this, authListener);
         server.getEventManager().register(this, fakePluginListener);
         server.getEventManager().register(this, channelListener);
         server.getEventManager().register(this, tabListener);
+        server.getEventManager().register(this, authChannelListener);
 
-        logger.info("✓ Listeners registered (auth, fake-plugin, channel-guard, tab-complete)");
+        logger.info("✓ Listeners registered (auth, fake-plugin, channel-guard, tab-complete, auth-channel)");
     }
 
     private void registerCommands() {

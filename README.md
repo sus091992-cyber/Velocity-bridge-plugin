@@ -227,6 +227,37 @@ players:
 3. Start your proxy once to generate `plugins/AuthBridge/config.yml`
 4. Edit `config.yml` — set `auth-server` to match your `velocity.toml` server name
 5. Restart the proxy
+6. **Install the backend companion plugin (`AuthBridge-Bukkit-1.0.0.jar`, built from `backend-bukkit/`) on your auth server only** — see below. Without it, `after-login` will never fire and players will never be vanished from each other.
+
+---
+
+## 🔌 Backend companion plugin (`backend-bukkit/`)
+
+AuthBridge (the proxy plugin) cannot see login/register events by itself — that only happens on the backend server where AuthMe runs, and it cannot make players truly invisible to each other — Velocity doesn't have entity-level control over what a backend server renders. Both problems are solved by a small companion plugin, `AuthBridge-Bukkit`, that you install **only on your auth/login server** (the one named in `auth-server:`).
+
+It does two things:
+
+1. **Reports login/register to the proxy.** It hooks AuthMe Reloaded's `LoginEvent`/`RegisterEvent` and sends a plugin message on the `authbridge:auth` channel. The proxy listens for this and only then marks the player authenticated and performs the `after-login` redirect — so the player is moved **only after AuthMe confirms success**, never before and never on a failed attempt.
+2. **Vanishes players from each other.** Every player connected to this server is hidden (real entity-level hide, not just tab list) from every other player on the same server, and vice versa. If 100 players are waiting to log in, none of them can see any of the others — only themselves.
+
+### Build
+
+```bash
+cd backend-bukkit
+mvn package
+```
+
+Produces `target/AuthBridge-Bukkit-1.0.0.jar`.
+
+### Install
+
+1. Place `AuthBridge-Bukkit-1.0.0.jar` in the `plugins/` folder of your **auth server only** (not your lobby/game servers).
+2. Make sure AuthMe Reloaded is installed on that same server.
+3. Restart the server — it generates `plugins/AuthBridgeBukkit/config.yml`.
+4. `proxy-channel` in that config must match the proxy's channel (`authbridge:auth` by default — do not change unless you also change the proxy source).
+5. `vanish-all.enabled: true` turns on mutual invisibility; set to `false` if you only want the login/register bridge.
+
+> If AuthMe is not detected on the backend server, the plugin logs a warning and disables the login/register bridge (vanish-all still works). Check your server console after installing.
 
 ---
 
@@ -425,6 +456,7 @@ settings:
 3. پروکسی را یک‌بار راه‌اندازی کنید تا `plugins/AuthBridge/config.yml` ساخته شود
 4. `config.yml` را ویرایش کنید — مقدار `auth-server` باید با نام سرور در `velocity.toml` یکسان باشد
 5. پروکسی را ریستارت کنید
+6. **پلاگین کمکی بک‌اند (`AuthBridge-Bukkit-1.0.0.jar` از پوشه `backend-bukkit/`) را فقط روی سرور Auth نصب کنید** — بدون آن، ریدایرکت پس از لاگین اجرا نمی‌شود و بازیکنان از هم مخفی نخواهند شد. جزئیات در بخش انگلیسی (Backend companion plugin) بالا آمده است.
 
 ---
 

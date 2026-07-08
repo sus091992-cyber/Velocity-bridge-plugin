@@ -1,0 +1,7 @@
+name: AuthBridgeBukkit
+version: 1.0.0
+main: com.niongroq.authbridge.bukkit.AuthBridgeBukkit
+api-version: "1.20"
+authors: [S1MPLE]
+description: "Backend companion for the Velocity AuthBridge plugin: reports AuthMe login/register to the proxy and vanishes players from each other on this server."
+softdepend: [AuthMe]

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.niongroq</groupId>
+    <artifactId>authbridge-bukkit</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>AuthBridge-Bukkit</name>
+    <description>Backend companion for AuthBridge: hooks AuthMe Reloaded login/register events and forwards them to the Velocity AuthBridge proxy plugin, and vanishes players from each other while on the auth server.</description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>papermc</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- Paper/Spigot API. Works on any 1.19+ Paper or Spigot server. -->
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.20.4-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <!--
+      NOTE: We do NOT depend on the AuthMe Reloaded artifact. AuthMe's Maven
+      coordinates/repository have moved multiple times across versions and
+      forks, which makes a hard compile-time dependency fragile. Instead,
+      AuthBridgeBukkit#hookAuthMe loads AuthMe's login/register event
+      classes reflectively at runtime (see that file). This also means the
+      plugin never crashes with a missing-class error if AuthMe isn't
+      installed; it just logs a warning and disables the hook.
+    -->
+
+    <build>
+        <finalName>AuthBridge-Bukkit-1.0.0</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

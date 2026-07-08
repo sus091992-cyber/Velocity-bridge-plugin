@@ -1,0 +1,8 @@
+# Must match the "authbridge:auth" channel used by the Velocity AuthBridge plugin.
+proxy-channel: "authbridge:auth"
+
+# Vanish every player on this server from every other player on this server.
+# Enable this ONLY on your auth/login server so waiting players never see or
+# are seen by anyone else while unauthenticated.
+vanish-all:
+  enabled: true
