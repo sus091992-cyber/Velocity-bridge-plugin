@@ -259,6 +259,16 @@ Produces `target/AuthBridge-Bukkit-1.0.0.jar`.
 
 > If AuthMe is not detected on the backend server, the plugin logs a warning and disables the login/register bridge (vanish-all still works). Check your server console after installing.
 
+### Version compatibility
+
+`AuthBridge-Bukkit` is built to run on **any Paper version**, not just the latest one:
+
+- It only uses long-stable Bukkit API (plugin-messaging channels, `Player#hidePlayer`/`showPlayer`, `PlayerJoinEvent`/`PlayerQuitEvent`) — nothing tied to a specific Minecraft version.
+- The jar is compiled to Java 8 bytecode, so it loads under whatever JVM your Paper build already runs on (Java 8 through Java 21).
+- `plugin.yml` intentionally has no `api-version` pin, so Paper won't reject it based on version.
+
+In short: build it once, drop the same jar on any Paper server (old or new) that also runs AuthMe. You do not need to rebuild it per Minecraft version.
+
 ---
 
 ## 🔧 Commands

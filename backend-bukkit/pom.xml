@@ -14,8 +14,15 @@
     <description>Backend companion for AuthBridge: hooks AuthMe Reloaded login/register events and forwards them to the Velocity AuthBridge proxy plugin, and vanishes players from each other while on the auth server.</description>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <!--
+          Compiled to Java 8 bytecode on purpose: the JVM that loads a plugin
+          is the server's own JVM, and newer JVMs can always run older
+          bytecode. Targeting 8 means this jar loads under every JVM used by
+          any supported Paper version (1.8 on Java 8 all the way through
+          modern Paper on Java 17/21) instead of only the newest ones.
+        -->
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -27,11 +34,23 @@
     </repositories>
 
     <dependencies>
-        <!-- Paper/Spigot API. Works on any 1.19+ Paper or Spigot server. -->
+        <!--
+          Compile against an old, stable Paper API on purpose (NOT the
+          newest one). The Bukkit/Paper plugin API is additive and backward
+          compatible: a plugin built against an old API version keeps
+          working on every newer Paper release, because newer servers still
+          implement the old interfaces. The reverse is not true (compiling
+          against the newest API and running on an old server can throw
+          NoSuchMethodError for APIs that did not exist yet), so we pick the
+          oldest API version still published on PaperMC's own repository
+          (older snapshots, e.g. 1.13.x/1.16.x, have since been purged from
+          repo.papermc.io and can no longer be resolved) to maximize how
+          far back this jar keeps working.
+        -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>1.20.4-R0.1-SNAPSHOT</version>
+            <version>1.17-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -54,8 +73,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>17</source>
-                    <target>17</target>
+                    <source>8</source>
+                    <target>8</target>
                 </configuration>
             </plugin>
             <plugin>
