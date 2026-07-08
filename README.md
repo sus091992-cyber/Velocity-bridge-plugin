@@ -4,7 +4,7 @@
 
 **Professional Authentication Bridge Plugin for Velocity Proxy**
 
-[![Version](https://img.shields.io/badge/version-3.4.0-blue?style=for-the-badge)](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
+[![Version](https://img.shields.io/badge/version-3.5.0-blue?style=for-the-badge)](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
 [![Velocity](https://img.shields.io/badge/Velocity-3.5.0-green?style=for-the-badge)](https://papermc.io/software/velocity)
 [![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge)](https://adoptium.net/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
@@ -461,7 +461,7 @@ settings:
 
 ## 📦 نصب
 
-1. دانلود `AuthBridge-3.4.0.jar` از [Releases](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
+1. دانلود `AuthBridge-3.5.0.jar` از [Releases](https://github.com/sus091992-cyber/Velocity-bridge-plugin/releases)
 2. فایل را در پوشه `plugins/` پروکسی Velocity قرار دهید
 3. پروکسی را یک‌بار راه‌اندازی کنید تا `plugins/AuthBridge/config.yml` ساخته شود
 4. `config.yml` را ویرایش کنید — مقدار `auth-server` باید با نام سرور در `velocity.toml` یکسان باشد
