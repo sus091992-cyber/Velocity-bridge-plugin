@@ -6,6 +6,7 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ServerConnection;
+import com.niongroq.authbridge.managers.ConfigManager;
 import org.slf4j.Logger;
 
 import java.util.UUID;
@@ -29,10 +30,12 @@ public class AuthChannelListener {
     public static final String CHANNEL = "authbridge:auth";
 
     private final AuthListener authListener;
+    private final ConfigManager configManager;
     private final Logger logger;
 
-    public AuthChannelListener(AuthListener authListener, Logger logger) {
+    public AuthChannelListener(AuthListener authListener, ConfigManager configManager, Logger logger) {
         this.authListener = authListener;
+        this.configManager = configManager;
         this.logger = logger;
     }
 
@@ -48,6 +51,21 @@ public class AuthChannelListener {
         // must never reach the client.
         event.setResult(PluginMessageEvent.ForwardResult.handled());
 
+        ServerConnection source = (ServerConnection) event.getSource();
+        Player targetPlayer = (Player) event.getTarget();
+
+        // Only the configured auth server (where AuthMe actually runs) is
+        // trusted to confirm authentication. A compromised/rogue backend
+        // server cannot forge a confirmation just by sending on this
+        // channel — it must also be the auth server the player is
+        // currently connected through.
+        String sourceServerName = source.getServerInfo().getName();
+        if (!sourceServerName.equalsIgnoreCase(configManager.getAuthServer())) {
+            logger.warn("Ignoring {} message from non-auth server '{}' (expected '{}')",
+                CHANNEL, sourceServerName, configManager.getAuthServer());
+            return;
+        }
+
         try {
             ByteArrayDataInput in = ByteStreams.newDataInput(event.getData());
             String action = in.readUTF();
@@ -60,6 +78,18 @@ public class AuthChannelListener {
             }
 
             UUID uuid = UUID.fromString(uuidStr);
+
+            // The payload UUID must match the player this message is actually
+            // addressed to (Velocity resolves the target from the physical
+            // connection the backend sent it on). This prevents the auth
+            // server from ever confirming authentication for a UUID other
+            // than the one the message channel is bound to.
+            if (!uuid.equals(targetPlayer.getUniqueId())) {
+                logger.warn("Ignoring {} message: payload UUID {} does not match message target {} ({})",
+                    CHANNEL, uuidStr, targetPlayer.getUsername(), targetPlayer.getUniqueId());
+                return;
+            }
+
             authListener.markAuthenticated(uuid, username);
             logger.debug("Received '{}' confirmation for {} ({}) from backend", action, username, uuidStr);
         } catch (Exception e) {

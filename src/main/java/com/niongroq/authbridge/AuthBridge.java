@@ -97,7 +97,7 @@ public class AuthBridge {
         // instead of delivering it to our listener.
         server.getChannelRegistrar().register(
             MinecraftChannelIdentifier.from(AuthChannelListener.CHANNEL));
-        AuthChannelListener authChannelListener = new AuthChannelListener(authListener, logger);
+        AuthChannelListener authChannelListener = new AuthChannelListener(authListener, configManager, logger);
 
         server.getEventManager().register(this, authListener);
         server.getEventManager().register(this, fakePluginListener);
