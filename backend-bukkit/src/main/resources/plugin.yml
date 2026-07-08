@@ -1,11 +1,10 @@
 name: AuthBridgeBukkit
 version: 1.0.0
 main: com.niongroq.authbridge.bukkit.AuthBridgeBukkit
-# No api-version pin on purpose: it locks the plugin to that Minecraft
-# version and newer on some Paper builds. This plugin only uses very old,
-# stable Bukkit API (plugin messaging channels, hidePlayer/showPlayer,
-# PlayerJoinEvent/PlayerQuitEvent), so leaving api-version unset lets it
-# load on any Paper version instead of being rejected by version checks.
+# No api-version pin on purpose: Paper still loads plugins without one
+# (legacy compatibility mode), which avoids the server rejecting this jar
+# over a version mismatch. Targets Paper 1.17+ (see README "Version
+# compatibility" for why 1.17 is the floor and what that guarantee covers).
 authors: [S1MPLE]
 description: "Backend companion for the Velocity AuthBridge plugin: reports AuthMe login/register to the proxy and vanishes players from each other on this server."
 softdepend: [AuthMe]

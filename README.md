@@ -261,13 +261,13 @@ Produces `target/AuthBridge-Bukkit-1.0.0.jar`.
 
 ### Version compatibility
 
-`AuthBridge-Bukkit` is built to run on **any Paper version**, not just the latest one:
+`AuthBridge-Bukkit` targets **Paper 1.17 and newer** (up to and including the latest release) with a single build — you do not need to rebuild it per Minecraft version:
 
-- It only uses long-stable Bukkit API (plugin-messaging channels, `Player#hidePlayer`/`showPlayer`, `PlayerJoinEvent`/`PlayerQuitEvent`) — nothing tied to a specific Minecraft version.
-- The jar is compiled to Java 8 bytecode, so it loads under whatever JVM your Paper build already runs on (Java 8 through Java 21).
-- `plugin.yml` intentionally has no `api-version` pin, so Paper won't reject it based on version.
+- It only uses Bukkit API that has been stable since 1.17 (plugin-messaging channels, `Player#hidePlayer`/`showPlayer`, `PlayerJoinEvent`/`PlayerQuitEvent`) — nothing tied to a newer version, and nothing removed on current Paper.
+- The jar is compiled to Java 8 bytecode, so it loads under whatever JVM your Paper build already runs on (Java 8 through Java 21) — the compile target is not what limits the supported floor.
+- `plugin.yml` intentionally has no `api-version` pin. Paper still loads plugins without one (legacy compatibility mode); this avoids the server rejecting the jar over a version mismatch, but it is a loadability choice, not proof the plugin behaves correctly on every historical Paper release.
 
-In short: build it once, drop the same jar on any Paper server (old or new) that also runs AuthMe. You do not need to rebuild it per Minecraft version.
+The 1.17 floor comes from PaperMC's own Maven repository, which no longer publishes API artifacts older than 1.17 (older snapshots, e.g. 1.13.x/1.16.x, have been purged) — so that's the oldest version this plugin has actually been built and can be verified against. Compiling against very old Spigot/CraftBukkit API from another source and testing on a real 1.13–1.16 server would be needed before claiming support further back than that.
 
 ---
 
